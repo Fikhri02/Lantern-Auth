@@ -12,3 +12,11 @@ public sealed record CreateStaffResult(string? Id, bool Conflict, Dictionary<str
 
 public sealed record NewStaff(string? Username, string? FirstName, string? LastName, string? Email, string[]? Departments);
 public sealed record DepartmentsUpdate(string[]? Departments);
+
+public sealed record KcUserSession(string Id, string? IpAddress, long Start, long LastAccess);
+
+public sealed record TillSession(DateTimeOffset StartedAt, DateTimeOffset LastUsedAt, string? IpAddress);
+public sealed record TillAccount(string Id, string Username, bool Enabled, TillSession? Session);
+
+/// <summary>Outcome of creating a Keycloak user: an id, a username conflict, or Keycloak's validation errors.</summary>
+public sealed record UserCreation(string? Id, string Username, bool Conflict, Dictionary<string, string[]>? Errors);

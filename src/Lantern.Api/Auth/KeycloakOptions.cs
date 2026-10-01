@@ -15,6 +15,8 @@ public sealed class KeycloakOptions
     public string AdminClientId { get; set; } = "api-admin-svc";
     public string AdminClientSecret { get; set; } = "";
     public int IntrospectionCacheSeconds { get; set; } = 15;
+    /// <summary>Internal id of the till client, fixed in the realm file so the API needs no client-read rights.</summary>
+    public string TillClientUuid { get; set; } = "";
 
     public string RealmUrl => $"{BaseUrl.TrimEnd('/')}/realms/{Realm}";
     public string AdminUrl => $"{BaseUrl.TrimEnd('/')}/admin/realms/{Realm}";
