@@ -20,6 +20,7 @@ app.MapOutletEndpoints();
 app.MapStaffEndpoints();
 app.MapSalesEndpoints();
 app.MapTillEndpoints();
+app.MapCashierEndpoints();
 
 app.Run();
 

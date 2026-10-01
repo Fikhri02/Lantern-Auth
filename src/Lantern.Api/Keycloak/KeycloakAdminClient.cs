@@ -175,6 +175,35 @@ public sealed class KeycloakAdminClient(HttpClient http, IOptions<KeycloakOption
         return true;
     }
 
+    public async Task<UserCreation> CreateCashierAsync(Outlet outlet, string firstName, string lastName, string temporaryPin, CancellationToken ct)
+    {
+        var prefix = $"c-{outlet.CashierDigit}";
+        var next = NextNumber((await GetOutletMembersWithRoleAsync(outlet, Roles.Cashier, ct)).Select(u => u.Username), prefix, digits: 3);
+        var code = $"{prefix}{next:000}";
+        var creation = await CreateUserAsync(new
+        {
+            username = code,
+            enabled = true,
+            firstName,
+            lastName,
+            email = $"{code}@lantern.test",
+            emailVerified = true,
+            groups = new[] { outlet.GroupPath }
+        }, code, ct);
+        if (creation.Id is null) return creation;
+
+        await GrantRealmRoleAsync(creation.Id, Roles.Cashier, ct);
+        await SetPinAsync(creation.Id, temporaryPin, temporary: true, ct);
+        return creation;
+    }
+
+    /// <summary>Calls the plugin's PIN resource (spec §6.6); it also clears the cashier's lockout.</summary>
+    public async Task SetPinAsync(string userId, string pin, bool temporary, CancellationToken ct)
+    {
+        using var response = await SendToUrlAsync(HttpMethod.Put, $"{Kc.RealmUrl}/lantern-pin/users/{userId}", new { pin, temporary }, ct);
+        response.EnsureSuccessStatusCode();
+    }
+
     /// <summary>Highest existing number after <paramref name="prefix"/> plus one; gaps are never reused.</summary>
     private static int NextNumber(IEnumerable<string> usernames, string prefix, int? digits) =>
         usernames
@@ -222,9 +251,12 @@ public sealed class KeycloakAdminClient(HttpClient http, IOptions<KeycloakOption
         response.EnsureSuccessStatusCode();
     }
 
-    private async Task<HttpResponseMessage> SendAsync(HttpMethod method, string path, object? body, CancellationToken ct)
+    private Task<HttpResponseMessage> SendAsync(HttpMethod method, string path, object? body, CancellationToken ct) =>
+        SendToUrlAsync(method, $"{Kc.AdminUrl}/{path}", body, ct);
+
+    private async Task<HttpResponseMessage> SendToUrlAsync(HttpMethod method, string url, object? body, CancellationToken ct)
     {
-        using var request = new HttpRequestMessage(method, $"{Kc.AdminUrl}/{path}");
+        using var request = new HttpRequestMessage(method, url);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", await GetServiceTokenAsync(ct));
         if (body is not null) request.Content = JsonContent.Create(body);
         return await http.SendAsync(request, ct);
