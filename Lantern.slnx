@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/Lantern.Api/Lantern.Api.csproj" />
+    <Project Path="src/Lantern.Auth/Lantern.Auth.csproj" />
     <Project Path="src/Lantern.Till/Lantern.Till.csproj" />
   </Folder>
   <Folder Name="/tests/">

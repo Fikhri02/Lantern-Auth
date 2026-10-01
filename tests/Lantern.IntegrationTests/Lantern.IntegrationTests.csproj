@@ -13,6 +13,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Lantern.Api\Lantern.Api.csproj" />
     <ProjectReference Include="..\..\src\Lantern.Till\Lantern.Till.csproj" />
+    <ProjectReference Include="..\..\src\Lantern.Auth\Lantern.Auth.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />
