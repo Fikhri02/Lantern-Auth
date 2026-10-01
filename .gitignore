@@ -5,3 +5,4 @@ target/
 .idea/
 *.user
 TestResults/
+src/Lantern.Till/data/

@@ -8,9 +8,11 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.12" />
     <PackageReference Include="Testcontainers.Keycloak" Version="4.15.0" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.10.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Lantern.Api\Lantern.Api.csproj" />
+    <ProjectReference Include="..\..\src\Lantern.Till\Lantern.Till.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />
