@@ -14,6 +14,7 @@ app.UseAuthorization();
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 app.MapMeEndpoints();
 app.MapHqEndpoints();
+app.MapPurchaseOrderEndpoints();
 
 app.Run();
 

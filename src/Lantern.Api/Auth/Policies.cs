@@ -18,6 +18,7 @@ public static class Policies
 
     public static IServiceCollection AddLanternPolicies(this IServiceCollection services)
     {
+        services.AddSingleton<IAuthorizationHandler, NotCreatorHandler>();
         services.AddSingleton<IAuthorizationMiddlewareResultHandler, ForbiddenResultHandler>();
 
         services.AddAuthorizationBuilder()
@@ -29,6 +30,7 @@ public static class Policies
             .AddPolicy(PurchaseOrdersRead, p => p.RequireRole(Roles.Procurement, Roles.Finance, Roles.HqAdmin))
             .AddPolicy(SalesReports, p => p.RequireRole(Roles.Finance, Roles.HqAdmin))
             .AddPolicy(FinanceRole, p => p.RequireRole(Roles.Finance))
+            .AddPolicy(FinanceApprove, p => p.RequireRole(Roles.Finance).AddRequirements(new NotCreatorRequirement()))
             .AddPolicy(StaffAdmin, p => p.RequireRole(Roles.HqAdmin));
 
         return services;

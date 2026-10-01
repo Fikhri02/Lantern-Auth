@@ -7,6 +7,8 @@ public sealed record Supplier(string Id, string Name);
 public sealed record StockLine(string Sku, string Name, int Quantity);
 public sealed record RosterEntry(string Name, string Role);
 public sealed record OutletSales(string OutletId, decimal Total);
+public sealed record PurchaseOrder(Guid Id, string SupplierId, decimal Amount, string CreatedBySub,
+    string CreatedByName, string Status, string? ApprovedByName);
 
 /// <summary>In-memory business data, seeded on start. Exists only to make authorization visible.</summary>
 public sealed class DemoStore
@@ -49,4 +51,29 @@ public sealed class DemoStore
 
     public IReadOnlyList<OutletSales> SalesReport { get; } =
         [new("BGS", 18250.40m), new("KLC", 22410.00m), new("PJY", 9120.75m)];
+
+    private readonly ConcurrentDictionary<Guid, PurchaseOrder> _orders = new();
+
+    public IReadOnlyList<PurchaseOrder> PurchaseOrders => _orders.Values.ToList();
+
+    public PurchaseOrder AddPurchaseOrder(string supplierId, decimal amount, string createdBySub, string createdByName)
+    {
+        var po = new PurchaseOrder(Guid.NewGuid(), supplierId, amount, createdBySub, createdByName, "Pending", null);
+        _orders[po.Id] = po;
+        return po;
+    }
+
+    public PurchaseOrder? FindPurchaseOrder(Guid id) => _orders.GetValueOrDefault(id);
+
+    /// <summary>Atomic Pending → Approved. Returns null if the order is missing or already decided.</summary>
+    public PurchaseOrder? TryApprove(Guid id, string approverName)
+    {
+        while (_orders.TryGetValue(id, out var current))
+        {
+            if (current.Status != "Pending") return null;
+            var approved = current with { Status = "Approved", ApprovedByName = approverName };
+            if (_orders.TryUpdate(id, approved, current)) return approved;
+        }
+        return null;
+    }
 }
