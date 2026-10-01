@@ -1,0 +1,208 @@
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using DotNet.Testcontainers.Builders;
+using DotNet.Testcontainers.Containers;
+using DotNet.Testcontainers.Images;
+using DotNet.Testcontainers.Networks;
+using Testcontainers.Keycloak;
+
+namespace Lantern.IntegrationTests.Infrastructure;
+
+/// <summary>
+/// One Keycloak (our image, our realm) and one Mailpit for the whole test run.
+/// Adds a test-only password-grant client so tests can get user tokens without a browser.
+/// </summary>
+public sealed class KeycloakFixture : IAsyncLifetime
+{
+    public const string DemoPassword = "Lantern!2026";
+    private const string TestClientId = "test-runner";
+    private const string TestClientSecret = "test-runner-secret";
+
+    private readonly Dictionary<string, (string Token, DateTimeOffset ExpiresAt)> _tokens = new();
+    private readonly SemaphoreSlim _tokenLock = new(1, 1);
+    private INetwork _network = null!;
+    private IFutureDockerImage _image = null!;
+    private KeycloakContainer _keycloak = null!;
+    private IContainer _mailpit = null!;
+
+    public string BaseUrl { get; private set; } = "";
+    public string Issuer => $"{BaseUrl}/realms/lantern";
+    public string MailpitUrl { get; private set; } = "";
+    public ApiFactory Api { get; private set; } = null!;
+    public HttpClient Http { get; } = new();
+
+    public async Task InitializeAsync()
+    {
+        var repoRoot = CommonDirectoryPath.GetGitDirectory();
+
+        _image = new ImageFromDockerfileBuilder()
+            .WithDockerfileDirectory(repoRoot, "keycloak")
+            .WithDockerfile("Dockerfile")
+            .WithName("lantern-keycloak-test:26.7.5") // version tag lets Testcontainers pick the 26.x health port
+            .WithCleanUp(false)
+            .Build();
+        await _image.CreateAsync();
+
+        _network = new NetworkBuilder().Build();
+        await _network.CreateAsync();
+
+        _mailpit = new ContainerBuilder("axllent/mailpit:v1.31.3")
+            .WithNetwork(_network)
+            .WithNetworkAliases("mailpit")
+            .WithPortBinding(8025, true)
+            .WithWaitStrategy(Wait.ForUnixContainer().UntilHttpRequestIsSucceeded(r => r.ForPort(8025).ForPath("/livez")))
+            .Build();
+        await _mailpit.StartAsync();
+        MailpitUrl = $"http://{_mailpit.Hostname}:{_mailpit.GetMappedPublicPort(8025)}";
+
+        var realmPath = Path.Combine(repoRoot.DirectoryPath, "keycloak", "realm", "lantern-realm.json");
+        _keycloak = new KeycloakBuilder(_image.FullName)
+            .WithNetwork(_network)
+            .WithResourceMapping(Encoding.UTF8.GetBytes(BuildTestRealm(realmPath)), "/opt/keycloak/data/import/lantern-realm.json")
+            .WithCommand("--import-realm")
+            .Build();
+        await _keycloak.StartAsync();
+        BaseUrl = _keycloak.GetBaseAddress().TrimEnd('/');
+
+        Api = new ApiFactory(this, introspectionCacheSeconds: 0);
+    }
+
+    public async Task DisposeAsync()
+    {
+        await Api.DisposeAsync();
+        await _keycloak.DisposeAsync();
+        await _mailpit.DisposeAsync();
+        await _network.DisposeAsync();
+        Http.Dispose();
+    }
+
+    private static string BuildTestRealm(string path)
+    {
+        var realm = JsonNode.Parse(File.ReadAllText(path))!.AsObject();
+        var clients = realm["clients"]!.AsArray();
+        var mappers = clients.First(c => (string?)c!["clientId"] == "backoffice")!["protocolMappers"]!.DeepClone();
+        clients.Add(new JsonObject
+        {
+            ["clientId"] = TestClientId,
+            ["enabled"] = true,
+            ["publicClient"] = false,
+            ["secret"] = TestClientSecret,
+            ["standardFlowEnabled"] = false,
+            ["directAccessGrantsEnabled"] = true,
+            ["protocolMappers"] = mappers
+        });
+        return realm.ToJsonString();
+    }
+
+    /// <summary>Cached per user; refreshed when under 30 s from expiry.</summary>
+    public async Task<string> GetUserTokenAsync(string username, string password = DemoPassword)
+    {
+        await _tokenLock.WaitAsync();
+        try
+        {
+            if (_tokens.TryGetValue(username, out var cached) && cached.ExpiresAt > DateTimeOffset.UtcNow.AddSeconds(30))
+                return cached.Token;
+            var fresh = await RequestPasswordTokenAsync(username, password);
+            _tokens[username] = fresh;
+            return fresh.Token;
+        }
+        finally
+        {
+            _tokenLock.Release();
+        }
+    }
+
+    public async Task<string> GetFreshUserTokenAsync(string username, string password = DemoPassword) =>
+        (await RequestPasswordTokenAsync(username, password)).Token;
+
+    private async Task<(string Token, DateTimeOffset ExpiresAt)> RequestPasswordTokenAsync(string username, string password)
+    {
+        using var response = await Http.PostAsync($"{Issuer}/protocol/openid-connect/token", new FormUrlEncodedContent(
+            new Dictionary<string, string>
+            {
+                ["grant_type"] = "password",
+                ["client_id"] = TestClientId,
+                ["client_secret"] = TestClientSecret,
+                ["username"] = username,
+                ["password"] = password,
+                ["scope"] = "openid"
+            }));
+        var body = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode)
+            throw new InvalidOperationException($"Token request for {username} failed: {(int)response.StatusCode} {body}");
+        var json = JsonNode.Parse(body)!;
+        return ((string)json["access_token"]!, DateTimeOffset.UtcNow.AddSeconds((int)json["expires_in"]!));
+    }
+
+    /// <summary>Admin API client for the lantern realm, authenticated as the master admin.</summary>
+    public async Task<HttpClient> AdminClientAsync()
+    {
+        using var response = await Http.PostAsync($"{BaseUrl}/realms/master/protocol/openid-connect/token", new FormUrlEncodedContent(
+            new Dictionary<string, string>
+            {
+                ["grant_type"] = "password",
+                ["client_id"] = "admin-cli",
+                ["username"] = KeycloakBuilder.DefaultUsername,
+                ["password"] = KeycloakBuilder.DefaultPassword
+            }));
+        response.EnsureSuccessStatusCode();
+        var token = (string)JsonNode.Parse(await response.Content.ReadAsStringAsync())!["access_token"]!;
+        var client = new HttpClient { BaseAddress = new Uri($"{BaseUrl}/admin/realms/lantern/") };
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        return client;
+    }
+
+    public async Task<(string Id, string Username, string Email)> CreateTempUserAsync(string groupPath, string password = DemoPassword)
+    {
+        var username = $"temp-{Guid.NewGuid():N}"[..20];
+        var email = $"{username}@lantern.test";
+        using var admin = await AdminClientAsync();
+        using var create = await admin.PostAsJsonAsync("users", new
+        {
+            username,
+            enabled = true,
+            email,
+            emailVerified = true,
+            firstName = "Temp",
+            lastName = "User",
+            groups = new[] { groupPath },
+            credentials = new[] { new { type = "password", value = password, temporary = false } }
+        });
+        create.EnsureSuccessStatusCode();
+        return (create.Headers.Location!.Segments.Last(), username, email);
+    }
+
+    public async Task SetUserEnabledAsync(string id, bool enabled)
+    {
+        using var admin = await AdminClientAsync();
+        var user = (await admin.GetFromJsonAsync<JsonObject>($"users/{id}"))!;
+        user["enabled"] = enabled;
+        using var put = await admin.PutAsJsonAsync($"users/{id}", user);
+        put.EnsureSuccessStatusCode();
+    }
+
+    public async Task LogoutUserAsync(string id)
+    {
+        using var admin = await AdminClientAsync();
+        using var response = await admin.PostAsync($"users/{id}/logout", null);
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task<int> WaitForEmailCountAsync(string email, int atLeast, TimeSpan? timeout = null)
+    {
+        var deadline = DateTime.UtcNow + (timeout ?? TimeSpan.FromSeconds(15));
+        var count = 0;
+        while (DateTime.UtcNow < deadline)
+        {
+            var json = await Http.GetFromJsonAsync<JsonElement>(
+                $"{MailpitUrl}/api/v1/search?query={Uri.EscapeDataString("to:" + email)}");
+            count = json.GetProperty("messages_count").GetInt32();
+            if (count >= atLeast) return count;
+            await Task.Delay(500);
+        }
+        return count;
+    }
+}
