@@ -1,0 +1,23 @@
+@page "/"
+@attribute [Authorize]
+
+<PageTitle>Lantern Outlet Admin</PageTitle>
+
+<h1>Outlet Admin</h1>
+
+<section data-testid="roles">
+    <ul>
+        @foreach (var role in roles)
+        {
+            <li data-testid="role-@role">@role</li>
+        }
+    </ul>
+</section>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState> AuthState { get; set; } = default!;
+
+    private string[] roles = [];
+
+    protected override async Task OnInitializedAsync() => roles = LanternRoles.Of((await AuthState).User);
+}

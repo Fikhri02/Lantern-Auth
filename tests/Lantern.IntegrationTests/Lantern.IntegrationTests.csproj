@@ -15,6 +15,7 @@
     <ProjectReference Include="..\..\src\Lantern.Till\Lantern.Till.csproj" />
     <ProjectReference Include="..\..\src\Lantern.Auth\Lantern.Auth.csproj" />
     <ProjectReference Include="..\..\src\Lantern.BackOffice\Lantern.BackOffice.csproj" />
+    <ProjectReference Include="..\..\src\Lantern.OutletAdmin\Lantern.OutletAdmin.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />

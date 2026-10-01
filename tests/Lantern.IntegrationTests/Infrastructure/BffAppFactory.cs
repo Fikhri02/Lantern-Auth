@@ -39,4 +39,7 @@ public static class BffApps
 {
     public static BffAppFactory<Lantern.BackOffice.Program> BackOffice(KeycloakFixture kc, Action<IServiceCollection>? configure = null) =>
         new(kc, "backoffice", "backoffice-dev-secret", "lantern.bo", configure);
+
+    public static BffAppFactory<Lantern.OutletAdmin.Program> OutletAdmin(KeycloakFixture kc, Action<IServiceCollection>? configure = null) =>
+        new(kc, "outlet-admin", "outlet-admin-dev-secret", "lantern.oa", configure);
 }

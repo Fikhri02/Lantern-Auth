@@ -183,7 +183,10 @@
             "userinfo.token.claim": "true"
           }
         }
-      ]
+      ],
+      "authenticationFlowBindingOverrides": {
+        "browser": "7b2e4c61-9d3a-4f5e-8a1b-2c6d9e0f1a01"
+      }
     },
     {
       "clientId": "outlet-admin",
@@ -241,7 +244,10 @@
             "userinfo.token.claim": "true"
           }
         }
-      ]
+      ],
+      "authenticationFlowBindingOverrides": {
+        "browser": "7b2e4c61-9d3a-4f5e-8a1b-2c6d9e0f1a02"
+      }
     },
     {
       "id": "3f9c2b7e-6d41-4a8e-9b0c-7a5e2d1f4c60",
@@ -853,6 +859,252 @@
           "authenticatorConfig": "till-deny-message"
         }
       ]
+    },
+    {
+      "alias": "browser-hq",
+      "description": "Back Office sign-in: SSO or password (+OTP for hq-admin), then HQ roles only",
+      "providerId": "basic-flow",
+      "topLevel": true,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "authenticatorFlow": true,
+          "flowAlias": "browser-hq identify",
+          "userSetupAllowed": false
+        },
+        {
+          "requirement": "CONDITIONAL",
+          "priority": 20,
+          "authenticatorFlow": true,
+          "flowAlias": "browser-hq deny",
+          "userSetupAllowed": false
+        }
+      ],
+      "id": "7b2e4c61-9d3a-4f5e-8a1b-2c6d9e0f1a01"
+    },
+    {
+      "alias": "browser-hq identify",
+      "description": "Keycloak session cookie, or password then OTP for hq-admin",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "auth-cookie",
+          "requirement": "ALTERNATIVE",
+          "priority": 10,
+          "authenticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "requirement": "ALTERNATIVE",
+          "priority": 20,
+          "authenticatorFlow": true,
+          "flowAlias": "browser-hq forms",
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "alias": "browser-hq forms",
+      "description": "Password, then OTP when the user is an hq-admin",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "auth-username-password-form",
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "authenticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "requirement": "CONDITIONAL",
+          "priority": 20,
+          "authenticatorFlow": true,
+          "flowAlias": "browser-hq otp",
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "alias": "browser-hq otp",
+      "description": "OTP for hq-admin only (spec 5.6)",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "conditional-user-role",
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "authenticatorFlow": false,
+          "userSetupAllowed": false,
+          "authenticatorConfig": "otp-for-hq-admin"
+        },
+        {
+          "authenticator": "auth-otp-form",
+          "requirement": "REQUIRED",
+          "priority": 20,
+          "authenticatorFlow": false,
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "alias": "browser-hq deny",
+      "description": "Refuse users without the app's roles",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "conditional-user-role",
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "authenticatorFlow": false,
+          "userSetupAllowed": false,
+          "authenticatorConfig": "hq-without-hq-staff"
+        },
+        {
+          "authenticator": "deny-access-authenticator",
+          "requirement": "REQUIRED",
+          "priority": 20,
+          "authenticatorFlow": false,
+          "userSetupAllowed": false,
+          "authenticatorConfig": "hq-deny-message"
+        }
+      ]
+    },
+    {
+      "alias": "browser-outlet",
+      "description": "Outlet Admin sign-in: SSO or password (+OTP for hq-admin), then outlet-manager or hq-admin only",
+      "providerId": "basic-flow",
+      "topLevel": true,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "authenticatorFlow": true,
+          "flowAlias": "browser-outlet identify",
+          "userSetupAllowed": false
+        },
+        {
+          "requirement": "CONDITIONAL",
+          "priority": 20,
+          "authenticatorFlow": true,
+          "flowAlias": "browser-outlet deny",
+          "userSetupAllowed": false
+        }
+      ],
+      "id": "7b2e4c61-9d3a-4f5e-8a1b-2c6d9e0f1a02"
+    },
+    {
+      "alias": "browser-outlet identify",
+      "description": "Keycloak session cookie, or password then OTP for hq-admin",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "auth-cookie",
+          "requirement": "ALTERNATIVE",
+          "priority": 10,
+          "authenticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "requirement": "ALTERNATIVE",
+          "priority": 20,
+          "authenticatorFlow": true,
+          "flowAlias": "browser-outlet forms",
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "alias": "browser-outlet forms",
+      "description": "Password, then OTP when the user is an hq-admin",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "auth-username-password-form",
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "authenticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "requirement": "CONDITIONAL",
+          "priority": 20,
+          "authenticatorFlow": true,
+          "flowAlias": "browser-outlet otp",
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "alias": "browser-outlet otp",
+      "description": "OTP for hq-admin only (spec 5.6)",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "conditional-user-role",
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "authenticatorFlow": false,
+          "userSetupAllowed": false,
+          "authenticatorConfig": "otp-for-hq-admin"
+        },
+        {
+          "authenticator": "auth-otp-form",
+          "requirement": "REQUIRED",
+          "priority": 20,
+          "authenticatorFlow": false,
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "alias": "browser-outlet deny",
+      "description": "Refuse users without the app's roles",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "conditional-user-role",
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "authenticatorFlow": false,
+          "userSetupAllowed": false,
+          "authenticatorConfig": "outlet-without-manager"
+        },
+        {
+          "authenticator": "conditional-user-role",
+          "requirement": "REQUIRED",
+          "priority": 11,
+          "authenticatorFlow": false,
+          "userSetupAllowed": false,
+          "authenticatorConfig": "outlet-without-admin"
+        },
+        {
+          "authenticator": "deny-access-authenticator",
+          "requirement": "REQUIRED",
+          "priority": 20,
+          "authenticatorFlow": false,
+          "userSetupAllowed": false,
+          "authenticatorConfig": "outlet-deny-message"
+        }
+      ]
     }
   ],
   "authenticatorConfig": [
@@ -867,6 +1119,46 @@
       "alias": "till-deny-message",
       "config": {
         "denyErrorMessage": "This account can't open a till."
+      }
+    },
+    {
+      "alias": "otp-for-hq-admin",
+      "config": {
+        "condUserRole": "hq-admin",
+        "negate": "false"
+      }
+    },
+    {
+      "alias": "hq-without-hq-staff",
+      "config": {
+        "condUserRole": "hq-staff",
+        "negate": "true"
+      }
+    },
+    {
+      "alias": "hq-deny-message",
+      "config": {
+        "denyErrorMessage": "Your account doesn't have access to Back Office."
+      }
+    },
+    {
+      "alias": "outlet-without-manager",
+      "config": {
+        "condUserRole": "outlet-manager",
+        "negate": "true"
+      }
+    },
+    {
+      "alias": "outlet-without-admin",
+      "config": {
+        "condUserRole": "hq-admin",
+        "negate": "true"
+      }
+    },
+    {
+      "alias": "outlet-deny-message",
+      "config": {
+        "denyErrorMessage": "Your account doesn't have access to Outlet Admin."
       }
     }
   ]

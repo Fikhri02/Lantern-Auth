@@ -3,6 +3,7 @@
     <Project Path="src/Lantern.Api/Lantern.Api.csproj" />
     <Project Path="src/Lantern.Auth/Lantern.Auth.csproj" />
     <Project Path="src/Lantern.BackOffice/Lantern.BackOffice.csproj" />
+    <Project Path="src/Lantern.OutletAdmin/Lantern.OutletAdmin.csproj" />
     <Project Path="src/Lantern.Till/Lantern.Till.csproj" />
   </Folder>
   <Folder Name="/tests/">
