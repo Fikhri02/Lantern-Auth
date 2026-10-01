@@ -315,7 +315,8 @@
         }
       ],
       "authenticationFlowBindingOverrides": {
-        "direct_grant": "6a1d3f52-8c1e-4b7a-9f20-3e5b7c9d0a03"
+        "direct_grant": "6a1d3f52-8c1e-4b7a-9f20-3e5b7c9d0a03",
+        "browser": "6a1d3f52-8c1e-4b7a-9f20-3e5b7c9d0a01"
       }
     },
     {
@@ -794,6 +795,78 @@
           "userSetupAllowed": false
         }
       ]
+    },
+    {
+      "id": "6a1d3f52-8c1e-4b7a-9f20-3e5b7c9d0a01",
+      "alias": "browser-till",
+      "description": "Outlet account sign-in for the till: password, outlet-device only, one till per account. No cookie step.",
+      "providerId": "basic-flow",
+      "topLevel": true,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "auth-username-password-form",
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "authenticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "requirement": "CONDITIONAL",
+          "priority": 20,
+          "authenticatorFlow": true,
+          "flowAlias": "browser-till outlet-device only",
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "lantern-till-account-limit",
+          "requirement": "REQUIRED",
+          "priority": 30,
+          "authenticatorFlow": false,
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "id": "6a1d3f52-8c1e-4b7a-9f20-3e5b7c9d0a02",
+      "alias": "browser-till outlet-device only",
+      "description": "Deny anyone without the outlet-device role",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "conditional-user-role",
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "authenticatorFlow": false,
+          "userSetupAllowed": false,
+          "authenticatorConfig": "till-require-outlet-device"
+        },
+        {
+          "authenticator": "deny-access-authenticator",
+          "requirement": "REQUIRED",
+          "priority": 20,
+          "authenticatorFlow": false,
+          "userSetupAllowed": false,
+          "authenticatorConfig": "till-deny-message"
+        }
+      ]
+    }
+  ],
+  "authenticatorConfig": [
+    {
+      "alias": "till-require-outlet-device",
+      "config": {
+        "condUserRole": "outlet-device",
+        "negate": "true"
+      }
+    },
+    {
+      "alias": "till-deny-message",
+      "config": {
+        "denyErrorMessage": "This account can't open a till."
+      }
     }
   ]
 }
