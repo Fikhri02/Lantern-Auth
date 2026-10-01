@@ -20,6 +20,9 @@ public sealed class LanternApi(IHttpClientFactory http, AccessTokenProvider toke
     public Task<ApiResult<T>> PostAsync<T>(ClaimsPrincipal user, string path, object? body, CancellationToken ct = default) =>
         SendAsync<T>(user, HttpMethod.Post, path, body, ct);
 
+    public Task<ApiResult<object>> SendDeleteAsync(ClaimsPrincipal user, string path, CancellationToken ct = default) =>
+        SendAsync<object>(user, HttpMethod.Delete, path, null, ct);
+
     private async Task<ApiResult<T>> SendAsync<T>(ClaimsPrincipal user, HttpMethod method, string path, object? body, CancellationToken ct)
     {
         var token = await tokens.GetAccessTokenAsync(user, ct);

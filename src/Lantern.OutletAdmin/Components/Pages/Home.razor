@@ -1,23 +1,65 @@
 @page "/"
 @attribute [Authorize]
+@inject LanternApi Api
 
 <PageTitle>Lantern Outlet Admin</PageTitle>
 
-<h1>Outlet Admin</h1>
+<h1>Outlet <span data-testid="outlet">@outletId</span></h1>
 
-<section data-testid="roles">
-    <ul>
-        @foreach (var role in roles)
+@if (isAdmin)
+{
+    <nav class="outlet-picker">
+        @foreach (var id in new[] { "BGS", "KLC", "PJY" })
         {
-            <li data-testid="role-@role">@role</li>
+            <a href="/?outlet=@id" data-testid="pick-@id">@id</a>
+        }
+    </nav>
+}
+
+<p><a href="/tills?outlet=@outletId" data-testid="nav-tills">Tills</a></p>
+
+<section class="card">
+    <h2>Stock</h2>
+    <table class="table">
+        <thead><tr><th>SKU</th><th>Item</th><th>Quantity</th></tr></thead>
+        <tbody>
+            @foreach (var line in stock)
+            {
+                <tr data-testid="stock-@line.Sku"><td>@line.Sku</td><td>@line.Name</td><td>@line.Quantity</td></tr>
+            }
+        </tbody>
+    </table>
+</section>
+
+<section class="card">
+    <h2>Roster</h2>
+    <ul>
+        @foreach (var person in roster)
+        {
+            <li>@person.Name <span class="muted">(@person.Role)</span></li>
         }
     </ul>
 </section>
 
 @code {
     [CascadingParameter] private Task<AuthenticationState> AuthState { get; set; } = default!;
+    [SupplyParameterFromQuery(Name = "outlet")] private string? RequestedOutlet { get; set; }
 
-    private string[] roles = [];
+    private string outletId = "";
+    private bool isAdmin;
+    private List<StockLine> stock = [];
+    private List<RosterEntry> roster = [];
 
-    protected override async Task OnInitializedAsync() => roles = LanternRoles.Of((await AuthState).User);
+    protected override async Task OnInitializedAsync()
+    {
+        var user = (await AuthState).User;
+        isAdmin = LanternRoles.Of(user).Contains(LanternRoles.HqAdmin);
+        // Managers always see their own outlet; only hq-admin may choose (plan decision 2).
+        outletId = isAdmin ? (RequestedOutlet?.ToUpperInvariant() ?? "BGS") : user.FindFirst("outlet_id")?.Value ?? "";
+        stock = (await Api.GetAsync<List<StockLine>>(user, $"/outlets/{outletId}/stock")).Value ?? [];
+        roster = (await Api.GetAsync<List<RosterEntry>>(user, $"/outlets/{outletId}/roster")).Value ?? [];
+    }
+
+    private sealed record StockLine(string Sku, string Name, int Quantity);
+    private sealed record RosterEntry(string Name, string Role);
 }

@@ -1,0 +1,68 @@
+@page "/tills"
+@attribute [Authorize(Roles = $"{LanternRoles.OutletManager},{LanternRoles.HqAdmin}")]
+@rendermode InteractiveServer
+@inject LanternApi Api
+
+<PageTitle>Tills</PageTitle>
+
+<h1>Tills at <span data-testid="outlet">@outletId</span></h1>
+<p class="muted">Each till signs in with its own account. Release an account if its till was lost, replaced or wiped,
+    so it can sign in on another till.</p>
+
+@if (message is not null)
+{
+    <p role="status" data-testid="tills-message">@message</p>
+}
+
+<table class="table">
+    <thead><tr><th>Till account</th><th>Signed in</th><th>Last used</th><th>From</th><th></th></tr></thead>
+    <tbody>
+        @foreach (var till in tills)
+        {
+            <tr data-testid="till-@till.Username">
+                <td>@till.Username</td>
+                @if (till.Session is { } s)
+                {
+                    <td>@s.StartedAt.ToLocalTime().ToString("d MMM HH:mm")</td>
+                    <td>@s.LastUsedAt.ToLocalTime().ToString("d MMM HH:mm")</td>
+                    <td>@s.IpAddress</td>
+                    <td><button @onclick="() => ReleaseAsync(till)" data-testid="release-@till.Username">Release</button></td>
+                }
+                else
+                {
+                    <td colspan="4" class="muted">Not signed in</td>
+                }
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState> AuthState { get; set; } = default!;
+    [SupplyParameterFromQuery(Name = "outlet")] private string? RequestedOutlet { get; set; }
+
+    private string outletId = "";
+    private List<TillDto> tills = [];
+    private string? message;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = (await AuthState).User;
+        var isAdmin = LanternRoles.Of(user).Contains(LanternRoles.HqAdmin);
+        outletId = isAdmin ? (RequestedOutlet?.ToUpperInvariant() ?? "BGS") : user.FindFirst("outlet_id")?.Value ?? "";
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync() =>
+        tills = (await Api.GetAsync<List<TillDto>>((await AuthState).User, $"/outlets/{outletId}/tills")).Value ?? [];
+
+    private async Task ReleaseAsync(TillDto till)
+    {
+        var result = await Api.SendDeleteAsync((await AuthState).User, $"/outlets/{outletId}/tills/{till.Id}/session");
+        message = result.Ok ? $"{till.Username} released. It can now sign in on another till." : $"Couldn't release {till.Username} ({result.Status}).";
+        await LoadAsync();
+    }
+
+    private sealed record TillSessionDto(DateTimeOffset StartedAt, DateTimeOffset LastUsedAt, string? IpAddress);
+    private sealed record TillDto(string Id, string Username, bool Enabled, TillSessionDto? Session);
+}
