@@ -66,6 +66,7 @@ public sealed class KeycloakFixture : IAsyncLifetime
             .Build();
         await _keycloak.StartAsync();
         BaseUrl = _keycloak.GetBaseAddress().TrimEnd('/');
+        await AllowPlainHttpOnMasterRealmAsync();
 
         Api = new ApiFactory(this, introspectionCacheSeconds: 0);
     }
@@ -79,9 +80,27 @@ public sealed class KeycloakFixture : IAsyncLifetime
         Http.Dispose();
     }
 
+    /// <summary>
+    /// Host-to-container traffic can arrive from a non-private address (VPNs, Docker Desktop
+    /// networking), which sslRequired=external rejects; tests must not depend on that.
+    /// kcadm runs inside the container, where localhost is always allowed.
+    /// </summary>
+    private async Task AllowPlainHttpOnMasterRealmAsync()
+    {
+        const string kcadm = "/opt/keycloak/bin/kcadm.sh";
+        const string config = "/tmp/kcadm.config";
+        var login = await _keycloak.ExecAsync([kcadm, "config", "credentials", "--config", config,
+            "--server", "http://localhost:8080", "--realm", "master",
+            "--user", KeycloakBuilder.DefaultUsername, "--password", KeycloakBuilder.DefaultPassword]);
+        var update = await _keycloak.ExecAsync([kcadm, "update", "realms/master", "--config", config, "-s", "sslRequired=NONE"]);
+        if (login.ExitCode != 0 || update.ExitCode != 0)
+            throw new InvalidOperationException($"kcadm failed: {login.Stderr} {update.Stderr}");
+    }
+
     private static string BuildTestRealm(string path)
     {
         var realm = JsonNode.Parse(File.ReadAllText(path))!.AsObject();
+        realm["sslRequired"] = "none";
         var clients = realm["clients"]!.AsArray();
         var mappers = clients.First(c => (string?)c!["clientId"] == "backoffice")!["protocolMappers"]!.DeepClone();
         clients.Add(new JsonObject

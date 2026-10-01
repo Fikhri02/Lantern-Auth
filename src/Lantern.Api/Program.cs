@@ -6,6 +6,7 @@ builder.Services.AddProblemDetails();
 builder.Services.AddLanternJwt(builder.Configuration);
 builder.Services.AddLanternPolicies();
 builder.Services.AddSingleton<Lantern.Api.Data.DemoStore>();
+builder.Services.AddHttpClient<Lantern.Api.Keycloak.KeycloakAdminClient>();
 
 var app = builder.Build();
 app.UseAuthentication();
@@ -16,6 +17,7 @@ app.MapMeEndpoints();
 app.MapHqEndpoints();
 app.MapPurchaseOrderEndpoints();
 app.MapOutletEndpoints();
+app.MapStaffEndpoints();
 
 app.Run();
 
