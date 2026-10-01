@@ -1,0 +1,52 @@
+using System.Collections.Concurrent;
+
+namespace Lantern.Api.Data;
+
+public sealed record Promotion(Guid Id, string Name, DateOnly StartsOn, string CreatedBy);
+public sealed record Supplier(string Id, string Name);
+public sealed record StockLine(string Sku, string Name, int Quantity);
+public sealed record RosterEntry(string Name, string Role);
+public sealed record OutletSales(string OutletId, decimal Total);
+
+/// <summary>In-memory business data, seeded on start. Exists only to make authorization visible.</summary>
+public sealed class DemoStore
+{
+    public static readonly string[] OutletIds = ["BGS", "KLC", "PJY"];
+
+    private readonly ConcurrentDictionary<Guid, Promotion> _promotions = new();
+
+    public IReadOnlyList<Promotion> Promotions => _promotions.Values.OrderBy(p => p.StartsOn).ToList();
+
+    public Promotion AddPromotion(string name, DateOnly startsOn, string createdBy)
+    {
+        var promotion = new Promotion(Guid.NewGuid(), name, startsOn, createdBy);
+        _promotions[promotion.Id] = promotion;
+        return promotion;
+    }
+
+    public IReadOnlyList<Supplier> Suppliers { get; } =
+    [
+        new("SUP-01", "Kopi Beans Trading"),
+        new("SUP-02", "Fresh Dairy Co"),
+        new("SUP-03", "Packaging Plus")
+    ];
+
+    public IReadOnlyDictionary<string, IReadOnlyList<StockLine>> Stock { get; } =
+        new Dictionary<string, IReadOnlyList<StockLine>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["BGS"] = [new("SKU-100", "House Blend 1kg", 42), new("SKU-200", "Oat Milk 1L", 18)],
+            ["KLC"] = [new("SKU-100", "House Blend 1kg", 30), new("SKU-200", "Oat Milk 1L", 25)],
+            ["PJY"] = [new("SKU-100", "House Blend 1kg", 12), new("SKU-200", "Oat Milk 1L", 7)]
+        };
+
+    public IReadOnlyDictionary<string, IReadOnlyList<RosterEntry>> Roster { get; } =
+        new Dictionary<string, IReadOnlyList<RosterEntry>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["BGS"] = [new("Siti Aminah", "cashier"), new("Raj Kumar", "cashier")],
+            ["KLC"] = [new("Mei Ling Chan", "cashier"), new("Daniel Lee", "cashier")],
+            ["PJY"] = [new("Nurul Huda", "cashier")]
+        };
+
+    public IReadOnlyList<OutletSales> SalesReport { get; } =
+        [new("BGS", 18250.40m), new("KLC", 22410.00m), new("PJY", 9120.75m)];
+}

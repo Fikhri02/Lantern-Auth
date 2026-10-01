@@ -4,7 +4,8 @@ using Lantern.Api.Endpoints;
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddProblemDetails();
 builder.Services.AddLanternJwt(builder.Configuration);
-builder.Services.AddAuthorization();
+builder.Services.AddLanternPolicies();
+builder.Services.AddSingleton<Lantern.Api.Data.DemoStore>();
 
 var app = builder.Build();
 app.UseAuthentication();
@@ -12,6 +13,7 @@ app.UseAuthorization();
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 app.MapMeEndpoints();
+app.MapHqEndpoints();
 
 app.Run();
 
