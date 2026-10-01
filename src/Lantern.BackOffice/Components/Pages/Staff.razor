@@ -9,19 +9,19 @@
 
 <form class="card" data-testid="create-staff" @onsubmit="CreateAsync">
     <h2>Add a staff member</h2>
-    <label>Username <input @bind="newUsername" data-testid="new-username" /></label>
-    <label>First name <input @bind="newFirst" data-testid="new-first" /></label>
-    <label>Last name <input @bind="newLast" data-testid="new-last" /></label>
-    <label>Email <input type="email" @bind="newEmail" data-testid="new-email" /></label>
+    <label>Username <input disabled="@(!RendererInfo.IsInteractive)" @bind="newUsername" data-testid="new-username" /></label>
+    <label>First name <input disabled="@(!RendererInfo.IsInteractive)" @bind="newFirst" data-testid="new-first" /></label>
+    <label>Last name <input disabled="@(!RendererInfo.IsInteractive)" @bind="newLast" data-testid="new-last" /></label>
+    <label>Email <input disabled="@(!RendererInfo.IsInteractive)" type="email" @bind="newEmail" data-testid="new-email" /></label>
     <label>Department
-        <select @bind="newDepartment" data-testid="new-department">
+        <select disabled="@(!RendererInfo.IsInteractive)" @bind="newDepartment" data-testid="new-department">
             @foreach (var d in new[] { "Marketing", "Procurement", "Finance", "Admin" })
             {
                 <option value="@d">@d</option>
             }
         </select>
     </label>
-    <button class="primary" type="submit" data-testid="create-staff-submit">Add and email an invite</button>
+    <button disabled="@(!RendererInfo.IsInteractive)" class="primary" type="submit" data-testid="create-staff-submit">Add and email an invite</button>
 </form>
 
 @if (message is not null)
@@ -42,9 +42,9 @@
                 <td>
                     @if (s.Enabled)
                     {
-                        <button @onclick="() => DeactivateAsync(s)" data-testid="deactivate-@s.Username">Deactivate</button>
+                        <button disabled="@(!RendererInfo.IsInteractive)" @onclick="() => DeactivateAsync(s)" data-testid="deactivate-@s.Username">Deactivate</button>
                     }
-                    <button @onclick="() => ResetPasswordAsync(s)" data-testid="reset-@s.Username">Reset password</button>
+                    <button disabled="@(!RendererInfo.IsInteractive)" @onclick="() => ResetPasswordAsync(s)" data-testid="reset-@s.Username">Reset password</button>
                 </td>
             </tr>
         }

@@ -10,15 +10,15 @@
 @if (isMarketing)
 {
     <form class="card" data-testid="create-promotion" @onsubmit="CreateAsync">
-        <label>Name <input @bind="newName" data-testid="promotion-name" /></label>
-        <label>Starts on <input type="date" @bind="newStartsOn" data-testid="promotion-starts" /></label>
-        <button class="primary" type="submit" data-testid="promotion-submit">Create promotion</button>
+        <label>Name <input disabled="@(!RendererInfo.IsInteractive)" @bind="newName" data-testid="promotion-name" /></label>
+        <label>Starts on <input disabled="@(!RendererInfo.IsInteractive)" type="date" @bind="newStartsOn" data-testid="promotion-starts" /></label>
+        <button disabled="@(!RendererInfo.IsInteractive)" class="primary" type="submit" data-testid="promotion-submit">Create promotion</button>
     </form>
 }
 else
 {
     <p class="card">Only Marketing can create promotions. The API enforces this, not just the screen:
-        <button @onclick="TryAnywayAsync" data-testid="try-anyway">Try it anyway</button>
+        <button disabled="@(!RendererInfo.IsInteractive)" @onclick="TryAnywayAsync" data-testid="try-anyway">Try it anyway</button>
     </p>
 }
 
