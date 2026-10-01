@@ -351,6 +351,18 @@ public sealed class KeycloakFixture : IAsyncLifetime
         return (string)body["access_token"]!;
     }
 
+    public async Task<int> UserSessionCountAsync(string userId)
+    {
+        using var admin = await AdminClientAsync();
+        return (await admin.GetFromJsonAsync<JsonElement>($"users/{userId}/sessions")).GetArrayLength();
+    }
+
+    public async Task<int> OfflineTillSessionCountAsync(string userId)
+    {
+        using var admin = await AdminClientAsync();
+        return (await admin.GetFromJsonAsync<JsonElement>($"users/{userId}/offline-sessions/{await GetTillClientUuidAsync()}")).GetArrayLength();
+    }
+
     public async Task<int> WaitForEmailCountAsync(string email, int atLeast, TimeSpan? timeout = null)
     {
         var deadline = DateTime.UtcNow + (timeout ?? TimeSpan.FromSeconds(15));

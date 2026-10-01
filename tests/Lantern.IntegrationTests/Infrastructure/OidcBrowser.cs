@@ -116,32 +116,4 @@ public sealed partial class OidcBrowser(string issuer) : IDisposable
     private static string Base64Url(byte[] bytes) =>
         Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
 
-    /// <summary>
-    /// Keycloak marks its cookies Secure even over http. Browsers treat http://localhost as a secure
-    /// context and send them anyway; CookieContainer does not. This jar behaves like the browser.
-    /// </summary>
-    private sealed class LocalhostCookieJar(HttpMessageHandler inner) : DelegatingHandler(inner)
-    {
-        private readonly Dictionary<string, string> _cookies = new();
-
-        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
-        {
-            if (_cookies.Count > 0)
-                request.Headers.Add("Cookie", string.Join("; ", _cookies.Select(c => $"{c.Key}={c.Value}")));
-
-            var response = await base.SendAsync(request, ct);
-            if (response.Headers.TryGetValues("Set-Cookie", out var setCookies))
-                foreach (var header in setCookies)
-                {
-                    var parts = header.Split(';', StringSplitOptions.TrimEntries);
-                    var nameValue = parts[0].Split('=', 2);
-                    var expired = parts.Any(p => p.Equals("Max-Age=0", StringComparison.OrdinalIgnoreCase)) ||
-                                  parts.Any(p => p.StartsWith("Expires=", StringComparison.OrdinalIgnoreCase) &&
-                                                 DateTimeOffset.TryParse(p[8..], out var at) && at < DateTimeOffset.UtcNow);
-                    if (expired || nameValue.Length < 2 || nameValue[1].Length == 0) _cookies.Remove(nameValue[0]);
-                    else _cookies[nameValue[0]] = nameValue[1];
-                }
-            return response;
-        }
-    }
 }
