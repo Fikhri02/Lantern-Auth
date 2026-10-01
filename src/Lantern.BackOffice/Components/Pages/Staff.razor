@@ -1,0 +1,94 @@
+@page "/staff"
+@attribute [Authorize(Roles = LanternRoles.HqAdmin)]
+@rendermode InteractiveServer
+@inject LanternApi Api
+
+<PageTitle>Staff</PageTitle>
+
+<h1>Staff</h1>
+
+<form class="card" data-testid="create-staff" @onsubmit="CreateAsync">
+    <h2>Add a staff member</h2>
+    <label>Username <input @bind="newUsername" data-testid="new-username" /></label>
+    <label>First name <input @bind="newFirst" data-testid="new-first" /></label>
+    <label>Last name <input @bind="newLast" data-testid="new-last" /></label>
+    <label>Email <input type="email" @bind="newEmail" data-testid="new-email" /></label>
+    <label>Department
+        <select @bind="newDepartment" data-testid="new-department">
+            @foreach (var d in new[] { "Marketing", "Procurement", "Finance", "Admin" })
+            {
+                <option value="@d">@d</option>
+            }
+        </select>
+    </label>
+    <button class="primary" type="submit" data-testid="create-staff-submit">Add and email an invite</button>
+</form>
+
+@if (message is not null)
+{
+    <p role="status" data-testid="staff-message">@message</p>
+}
+
+<table class="table">
+    <thead><tr><th>Name</th><th>Username</th><th>Roles</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+        @foreach (var s in staff)
+        {
+            <tr data-testid="staff-@s.Username">
+                <td>@s.Name</td>
+                <td>@s.Username</td>
+                <td>@string.Join(", ", s.Roles)</td>
+                <td>@(s.Enabled ? "Active" : "Deactivated")</td>
+                <td>
+                    @if (s.Enabled)
+                    {
+                        <button @onclick="() => DeactivateAsync(s)" data-testid="deactivate-@s.Username">Deactivate</button>
+                    }
+                    <button @onclick="() => ResetPasswordAsync(s)" data-testid="reset-@s.Username">Reset password</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState> AuthState { get; set; } = default!;
+
+    private List<StaffDto> staff = [];
+    private string? message;
+    private string newUsername = "", newFirst = "", newLast = "", newEmail = "", newDepartment = "Marketing";
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        var result = await Api.GetAsync<List<StaffDto>>((await AuthState).User, "/staff");
+        staff = result.Value ?? [];
+    }
+
+    private async Task CreateAsync()
+    {
+        var result = await Api.PostAsync<object>((await AuthState).User, "/staff", new
+        {
+            username = newUsername, firstName = newFirst, lastName = newLast, email = newEmail, departments = new[] { newDepartment }
+        });
+        message = result.Ok ? $"Added {newUsername}; they've been emailed an invite." : $"Couldn't add {newUsername} ({result.Status}).";
+        if (result.Ok) (newUsername, newFirst, newLast, newEmail) = ("", "", "", "");
+        await LoadAsync();
+    }
+
+    private async Task DeactivateAsync(StaffDto s)
+    {
+        var result = await Api.PostAsync<object>((await AuthState).User, $"/staff/{s.Id}/deactivate", null);
+        message = result.Ok ? $"{s.Name} has been deactivated and signed out everywhere." : $"Couldn't deactivate {s.Name} ({result.Status}).";
+        await LoadAsync();
+    }
+
+    private async Task ResetPasswordAsync(StaffDto s)
+    {
+        var result = await Api.PostAsync<object>((await AuthState).User, $"/staff/{s.Id}/reset-password", null);
+        message = result.Ok ? $"Password reset email sent to {s.Name}." : $"Couldn't send the reset email ({result.Status}).";
+    }
+
+    private sealed record StaffDto(string Id, string Username, string Name, string? Email, bool Enabled, string[] Groups, string[] Roles);
+}

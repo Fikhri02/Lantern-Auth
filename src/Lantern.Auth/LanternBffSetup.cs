@@ -21,6 +21,8 @@ public static class LanternBffSetup
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<ServerSessionStore>();
         services.AddSingleton<LogoutTokenValidator>();
+        services.AddSingleton<AccessTokenProvider>();
+        services.AddSingleton<LanternApi>();
         services.AddHttpClient(ApiClient, c => c.Timeout = TimeSpan.FromSeconds(10));
         services.AddHttpClient(KeycloakClient, c => c.Timeout = TimeSpan.FromSeconds(10));
 

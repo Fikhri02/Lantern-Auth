@@ -1,9 +1,20 @@
 @page "/"
 @attribute [Authorize]
+@inject LanternApi Api
+@inject NavigationManager Navigation
 
 <PageTitle>Lantern Back Office</PageTitle>
 
 <h1>Back Office</h1>
+<p class="greeting" data-testid="greeting">@greeting</p>
+
+<nav class="cards">
+    @if (roles.Contains(LanternRoles.HqAdmin))
+    {
+        <a class="card" href="/staff" data-testid="nav-staff">Staff</a>
+    }
+    <a class="card" href="/promotions" data-testid="nav-promotions">Promotions</a>
+</nav>
 
 <section data-testid="roles">
     <h2>Your roles</h2>
@@ -19,6 +30,16 @@
     [CascadingParameter] private Task<AuthenticationState> AuthState { get; set; } = default!;
 
     private string[] roles = [];
+    private string? greeting;
 
-    protected override async Task OnInitializedAsync() => roles = LanternRoles.Of((await AuthState).User);
+    protected override async Task OnInitializedAsync()
+    {
+        var user = (await AuthState).User;
+        roles = LanternRoles.Of(user);
+        var dashboard = await Api.GetAsync<DashboardDto>(user, "/dashboard");
+        if (dashboard.Status == 401) Navigation.NavigateTo("/bff/login?returnUrl=/", forceLoad: true);
+        greeting = dashboard.Value?.Greeting;
+    }
+
+    private sealed record DashboardDto(string Greeting, string[] Outlets);
 }

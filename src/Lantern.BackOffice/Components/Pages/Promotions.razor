@@ -1,0 +1,76 @@
+@page "/promotions"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject LanternApi Api
+
+<PageTitle>Promotions</PageTitle>
+
+<h1>Promotions</h1>
+
+@if (isMarketing)
+{
+    <form class="card" data-testid="create-promotion" @onsubmit="CreateAsync">
+        <label>Name <input @bind="newName" data-testid="promotion-name" /></label>
+        <label>Starts on <input type="date" @bind="newStartsOn" data-testid="promotion-starts" /></label>
+        <button class="primary" type="submit" data-testid="promotion-submit">Create promotion</button>
+    </form>
+}
+else
+{
+    <p class="card">Only Marketing can create promotions. The API enforces this, not just the screen:
+        <button @onclick="TryAnywayAsync" data-testid="try-anyway">Try it anyway</button>
+    </p>
+}
+
+@if (message is not null)
+{
+    <p role="status" data-testid="promotion-message">@message</p>
+}
+
+@if (promotions.Count == 0)
+{
+    <p data-testid="no-promotions">No promotions yet.</p>
+}
+<ul data-testid="promotions">
+    @foreach (var p in promotions)
+    {
+        <li>@p.Name — from @p.StartsOn.ToString("d MMM yyyy") <span class="muted">by @p.CreatedBy</span></li>
+    }
+</ul>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState> AuthState { get; set; } = default!;
+
+    private List<PromotionDto> promotions = [];
+    private bool isMarketing;
+    private string? message;
+    private string newName = "";
+    private DateOnly newStartsOn = DateOnly.FromDateTime(DateTime.Today);
+
+    protected override async Task OnInitializedAsync()
+    {
+        isMarketing = LanternRoles.Of((await AuthState).User).Contains(LanternRoles.Marketing);
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync() =>
+        promotions = (await Api.GetAsync<List<PromotionDto>>((await AuthState).User, "/promotions")).Value ?? [];
+
+    private async Task CreateAsync()
+    {
+        var result = await Api.PostAsync<PromotionDto>((await AuthState).User, "/promotions", new { name = newName, startsOn = newStartsOn });
+        message = result.Ok ? $"Created {newName}." : $"Couldn't create it ({result.Status}).";
+        if (result.Ok) newName = "";
+        await LoadAsync();
+    }
+
+    private async Task TryAnywayAsync()
+    {
+        var result = await Api.PostAsync<PromotionDto>((await AuthState).User, "/promotions", new { name = "Sneaky sale", startsOn = DateOnly.FromDateTime(DateTime.Today) });
+        message = result.Status == 403
+            ? $"The API refused: 403 Forbidden by policy \"{result.Policy}\"."
+            : $"Unexpected answer from the API: {result.Status}.";
+    }
+
+    private sealed record PromotionDto(Guid Id, string Name, DateOnly StartsOn, string CreatedBy);
+}
