@@ -1,0 +1,60 @@
+<section class="card pin-pad" data-testid="pin-pad">
+    <h1>@(changing ? "Choose a new PIN" : "Cashier sign-in")</h1>
+
+    <label>Cashier code
+        <input data-testid="cashier-code" @bind="code" disabled="@changing" autocomplete="off" />
+    </label>
+    <label>@(changing ? "Temporary PIN" : "PIN")
+        <input data-testid="pin" type="password" inputmode="numeric" @bind="pin" disabled="@changing" autocomplete="off" />
+    </label>
+    @if (changing)
+    {
+        <label>New PIN
+            <input data-testid="new-pin" type="password" inputmode="numeric" @bind="newPin" autocomplete="off" />
+        </label>
+    }
+
+    <button class="primary" data-testid="pin-submit" disabled="@busy" @onclick="SubmitAsync">
+        @(changing ? "Save PIN and sign in" : "Sign in")
+    </button>
+
+    @if (!string.IsNullOrEmpty(message))
+    {
+        <p class="error" role="alert" data-testid="pin-message">@message</p>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public Func<PinAttempt, Task<PinResult>> OnSignIn { get; set; } = default!;
+
+    private string code = "";
+    private string pin = "";
+    private string newPin = "";
+    private bool changing;
+    private bool busy;
+    private string? message;
+
+    private async Task SubmitAsync()
+    {
+        busy = true;
+        try
+        {
+            var result = await OnSignIn(new PinAttempt(code, pin, changing ? newPin : null));
+            if (result.Succeeded)
+            {
+                (pin, newPin, changing, message) = ("", "", false, null);
+                return;
+            }
+
+            // Stay on the new-PIN screen while the temporary PIN is right but the new one breaks a rule.
+            changing = result.ChangePinRequired || (changing && result.ErrorCode?.StartsWith("pin_rule", StringComparison.Ordinal) == true);
+            message = result.Message;
+            newPin = "";
+            if (!changing) pin = "";
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+}

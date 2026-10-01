@@ -1,0 +1,111 @@
+@implements IAsyncDisposable
+@inject TillSessionService Till
+
+<main class="till" data-testid="till">
+    @if (status is null)
+    {
+        <p>Loading…</p>
+    }
+    else if (status.Mode == TillMode.NotRegistered)
+    {
+        <section class="card" data-testid="not-registered">
+            <h1>This till isn't signed in</h1>
+            <p>Sign in with this till's outlet account. You only need to do this once.</p>
+            <a class="primary" href="/register" data-enhance-nav="false" data-testid="register-link">Sign in this till</a>
+        </section>
+    }
+    else
+    {
+        <header class="till-bar">
+            <span data-testid="till-account">@status.TillAccount</span>
+            <span class="muted" data-testid="outlet-id">@status.OutletId</span>
+            @if (status.Cashier is { } cashier)
+            {
+                <span class="cashier" data-testid="cashier">@cashier.Name (@cashier.Code)</span>
+                <button @onclick="LockAsync" data-testid="lock">Lock</button>
+            }
+        </header>
+
+        @if (status.KeycloakUnavailable)
+        {
+            <p class="warning" role="status" data-testid="keycloak-unavailable">Sign-in is temporarily unavailable.</p>
+        }
+
+        @if (status.Mode == TillMode.Locked)
+        {
+            <PinPad OnSignIn="SignInAsync" />
+        }
+        else
+        {
+            <SaleScreen OnCharge="ChargeAsync" />
+        }
+
+        <footer class="till-footer">
+            <button class="link" @onclick="SignOutTillAsync" data-testid="sign-out-till">Sign out this till</button>
+        </footer>
+    }
+</main>
+
+@code {
+    [Parameter] public string? DeviceId { get; set; }
+
+    private TillStatus? status;
+    private readonly CancellationTokenSource stop = new();
+
+    protected override async Task OnInitializedAsync() => status = await Till.GetStatusAsync(DeviceId, stop.Token);
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender && RendererInfo.IsInteractive) _ = PollAsync();
+    }
+
+    /// <summary>Picks up the idle lock and a released till without waiting for the next tap.</summary>
+    private async Task PollAsync()
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(30));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(stop.Token))
+            {
+                status = await Till.GetStatusAsync(DeviceId, stop.Token);
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private async Task<PinResult> SignInAsync(PinAttempt attempt)
+    {
+        var result = await Till.SignInCashierAsync(DeviceId!, attempt, stop.Token);
+        status = await Till.GetStatusAsync(DeviceId, stop.Token);
+        return result;
+    }
+
+    private async Task<SaleResult> ChargeAsync(IReadOnlyList<SaleItem> items)
+    {
+        var result = await Till.RingSaleAsync(DeviceId!, items, stop.Token);
+        if (result.Outcome != SaleOutcome.Ok) status = await Till.GetStatusAsync(DeviceId, stop.Token);
+        return result;
+    }
+
+    private async Task LockAsync()
+    {
+        await Till.LockAsync(DeviceId!, stop.Token);
+        status = await Till.GetStatusAsync(DeviceId, stop.Token);
+    }
+
+    private async Task SignOutTillAsync()
+    {
+        await Till.SignOutTillAsync(DeviceId!, stop.Token);
+        status = await Till.GetStatusAsync(DeviceId, stop.Token);
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        stop.Cancel();
+        stop.Dispose();
+        return ValueTask.CompletedTask;
+    }
+}

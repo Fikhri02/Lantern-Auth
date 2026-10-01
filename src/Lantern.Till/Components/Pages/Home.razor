@@ -1,7 +1,16 @@
-﻿@page "/"
+@page "/"
 
-<PageTitle>Home</PageTitle>
+<PageTitle>Lantern Till</PageTitle>
 
-<h1>Hello, world!</h1>
+<TillScreen DeviceId="@deviceId" @rendermode="InteractiveServer" />
 
-Welcome to your new app.
+@code {
+    // This page renders statically, so the request (and its device cookie) is available here; the id is
+    // passed to the interactive screen as a parameter, which Blazor protects in the page markup.
+    [CascadingParameter] private HttpContext? HttpContext { get; set; }
+
+    private string? deviceId;
+
+    protected override void OnInitialized() =>
+        deviceId = HttpContext is null ? null : DeviceCookie.Read(HttpContext.Request);
+}

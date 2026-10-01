@@ -1,0 +1,74 @@
+<section class="card sale" data-testid="sale">
+    <div class="catalog">
+        @foreach (var item in TillCatalog.Items)
+        {
+            <button data-testid="add-@item.Sku" @onclick="() => Add(item.Sku)">@item.Name</button>
+        }
+    </div>
+
+    <ul class="cart" data-testid="cart">
+        @foreach (var (sku, quantity) in cart)
+        {
+            <li>@quantity × @TillCatalog.NameOf(sku)</li>
+        }
+    </ul>
+
+    <button class="primary" data-testid="charge" disabled="@(cart.Count == 0 || busy)" @onclick="ChargeAsync">Charge</button>
+
+    @if (!string.IsNullOrEmpty(message))
+    {
+        <p class="error" role="alert" data-testid="sale-message">@message</p>
+    }
+
+    @if (receipt is not null)
+    {
+        <article class="receipt" data-testid="receipt">
+            <p>Served by: <strong>@receipt.ServedBy</strong></p>
+            <p>Till: @receipt.TillAccount · @receipt.OutletId</p>
+            <ul>
+                @foreach (var line in receipt.Lines)
+                {
+                    <li>@line.Quantity × @line.Name <span>@line.Amount.ToString("0.00")</span></li>
+                }
+            </ul>
+            <p class="total">Total <strong>@receipt.Total.ToString("0.00")</strong></p>
+        </article>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public Func<IReadOnlyList<SaleItem>, Task<SaleResult>> OnCharge { get; set; } = default!;
+
+    private readonly Dictionary<string, int> cart = new();
+    private Receipt? receipt;
+    private string? message;
+    private bool busy;
+
+    private void Add(string sku)
+    {
+        cart[sku] = cart.GetValueOrDefault(sku) + 1;
+        (receipt, message) = (null, null);
+    }
+
+    private async Task ChargeAsync()
+    {
+        busy = true;
+        try
+        {
+            var result = await OnCharge(cart.Select(c => new SaleItem(c.Key, c.Value)).ToList());
+            if (result.Outcome == SaleOutcome.Ok)
+            {
+                receipt = result.Receipt;
+                cart.Clear();
+            }
+            else
+            {
+                message = result.Message;
+            }
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+}
