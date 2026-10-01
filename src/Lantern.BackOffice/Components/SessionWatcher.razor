@@ -1,0 +1,19 @@
+@implements IDisposable
+@inject AuthenticationStateProvider AuthState
+@inject NavigationManager Navigation
+
+@code {
+    // Revalidation (every 30 s) marks the circuit anonymous when the server session is gone, e.g. after a
+    // back-channel logout. This turns that into a visible move to the sign-in page (spec §5.2 step 4).
+    protected override void OnInitialized() => AuthState.AuthenticationStateChanged += OnChanged;
+
+    private async void OnChanged(Task<AuthenticationState> stateTask)
+    {
+        var state = await stateTask;
+        if (state.User.Identity?.IsAuthenticated == true) return;
+        var here = "/" + Navigation.ToBaseRelativePath(Navigation.Uri);
+        await InvokeAsync(() => Navigation.NavigateTo($"/bff/login?returnUrl={Uri.EscapeDataString(here)}", forceLoad: true));
+    }
+
+    public void Dispose() => AuthState.AuthenticationStateChanged -= OnChanged;
+}

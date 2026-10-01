@@ -6,6 +6,7 @@
         <Authorized>
             <span class="who" data-testid="signed-in-as">@context.User.FindFirst("name")?.Value (@context.User.Identity?.Name)</span>
             <a href="/bff/logout?sid=@Uri.EscapeDataString(LanternRoles.Sid(context.User) ?? "")" data-testid="sign-out">Sign out</a>
+            <SessionWatcher @rendermode="InteractiveServer" />
         </Authorized>
     </AuthorizeView>
 </header>

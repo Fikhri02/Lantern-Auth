@@ -1,9 +1,10 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 COPY global.json Directory.Build.props ./
-COPY src/Lantern.Till/Lantern.Till.csproj src/Lantern.Till/
-RUN dotnet restore src/Lantern.Till/Lantern.Till.csproj
+# Restore with the source present: the SDK only adds Blazor's framework assets (_framework/blazor.web.js)
+# when it can see .razor files at restore time.
 COPY src/Lantern.Till/ src/Lantern.Till/
+RUN dotnet restore src/Lantern.Till/Lantern.Till.csproj
 RUN dotnet publish src/Lantern.Till/Lantern.Till.csproj -c Release -o /app --no-restore
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
