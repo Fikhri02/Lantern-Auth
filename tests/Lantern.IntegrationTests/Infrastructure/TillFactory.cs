@@ -28,4 +28,5 @@ public sealed class TillFactory(KeycloakFixture kc, string dataDirectory, Action
     }
 
     public TillRegistrationStore Store => Services.GetRequiredService<TillRegistrationStore>();
+    public TillSessionService Session => Services.GetRequiredService<TillSessionService>();
 }
