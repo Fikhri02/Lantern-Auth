@@ -34,9 +34,11 @@ public sealed class KeycloakFixture : IAsyncLifetime
     public string MailpitUrl { get; private set; } = "";
     public ApiFactory Api { get; private set; } = null!;
     public HttpClient Http { get; } = new();
+    public BackchannelRelay Relay { get; } = new();
 
     public async Task InitializeAsync()
     {
+        await Relay.StartAsync();
         var repoRoot = CommonDirectoryPath.GetGitDirectory();
 
         _image = new ImageFromDockerfileBuilder()
@@ -62,7 +64,8 @@ public sealed class KeycloakFixture : IAsyncLifetime
         var realmPath = Path.Combine(repoRoot.DirectoryPath, "keycloak", "realm", "lantern-realm.json");
         _keycloak = new KeycloakBuilder(_image.FullName)
             .WithNetwork(_network)
-            .WithResourceMapping(Encoding.UTF8.GetBytes(BuildTestRealm(realmPath)), "/opt/keycloak/data/import/lantern-realm.json")
+            .WithExtraHost("host.docker.internal", "host-gateway")
+            .WithResourceMapping(Encoding.UTF8.GetBytes(BuildTestRealm(realmPath, Relay.Port)), "/opt/keycloak/data/import/lantern-realm.json")
             .WithCommand("--import-realm")
             .Build();
         await _keycloak.StartAsync();
@@ -79,6 +82,7 @@ public sealed class KeycloakFixture : IAsyncLifetime
         await _mailpit.DisposeAsync();
         await _network.DisposeAsync();
         Http.Dispose();
+        await Relay.DisposeAsync();
     }
 
     /// <summary>
@@ -98,10 +102,16 @@ public sealed class KeycloakFixture : IAsyncLifetime
             throw new InvalidOperationException($"kcadm failed: {login.Stderr} {update.Stderr}");
     }
 
-    private static string BuildTestRealm(string path)
+    private static string BuildTestRealm(string path, int relayPort)
     {
         var realm = JsonNode.Parse(File.ReadAllText(path))!.AsObject();
         realm["sslRequired"] = "none";
+        foreach (var client in realm["clients"]!.AsArray())
+        {
+            var clientId = (string?)client!["clientId"];
+            if (clientId is "backoffice" or "outlet-admin")
+                client["attributes"]!["backchannel.logout.url"] = $"http://host.docker.internal:{relayPort}/{clientId}";
+        }
         var clients = realm["clients"]!.AsArray();
         var mappers = clients.First(c => (string?)c!["clientId"] == "backoffice")!["protocolMappers"]!.DeepClone();
         clients.Add(new JsonObject

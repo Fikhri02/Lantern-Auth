@@ -31,8 +31,12 @@ public sealed class BffAppFactory<TProgram>(KeycloakFixture kc, string clientId,
 
     public ServerSessionStore SessionStore => Services.GetRequiredService<ServerSessionStore>();
 
-    /// <summary>A handler into the in-memory app, for <see cref="AppBrowser"/>. Task 4 also routes Keycloak's back-channel here.</summary>
-    public HttpMessageHandler Handler() => Server.CreateHandler();
+    /// <summary>A handler into the in-memory app, and Keycloak's back-channel calls for this client routed to it.</summary>
+    public HttpMessageHandler Handler()
+    {
+        kc.Relay.Route(clientId, Server.CreateHandler());
+        return Server.CreateHandler();
+    }
 }
 
 public static class BffApps

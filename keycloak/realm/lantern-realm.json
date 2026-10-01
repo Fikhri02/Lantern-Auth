@@ -143,7 +143,10 @@
       ],
       "attributes": {
         "pkce.code.challenge.method": "S256",
-        "post.logout.redirect.uris": "http://localhost:5200/*"
+        "post.logout.redirect.uris": "http://localhost:5200/*",
+        "backchannel.logout.url": "http://backoffice:8080/bff/backchannel-logout",
+        "backchannel.logout.session.required": "true",
+        "backchannel.logout.revoke.offline.tokens": "false"
       },
       "protocolMappers": [
         {
@@ -186,7 +189,8 @@
       ],
       "authenticationFlowBindingOverrides": {
         "browser": "7b2e4c61-9d3a-4f5e-8a1b-2c6d9e0f1a01"
-      }
+      },
+      "frontchannelLogout": false
     },
     {
       "clientId": "outlet-admin",
@@ -204,7 +208,10 @@
       ],
       "attributes": {
         "pkce.code.challenge.method": "S256",
-        "post.logout.redirect.uris": "http://localhost:5300/*"
+        "post.logout.redirect.uris": "http://localhost:5300/*",
+        "backchannel.logout.url": "http://outlet-admin:8080/bff/backchannel-logout",
+        "backchannel.logout.session.required": "true",
+        "backchannel.logout.revoke.offline.tokens": "false"
       },
       "protocolMappers": [
         {
@@ -247,7 +254,8 @@
       ],
       "authenticationFlowBindingOverrides": {
         "browser": "7b2e4c61-9d3a-4f5e-8a1b-2c6d9e0f1a02"
-      }
+      },
+      "frontchannelLogout": false
     },
     {
       "id": "3f9c2b7e-6d41-4a8e-9b0c-7a5e2d1f4c60",
