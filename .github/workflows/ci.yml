@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Keycloak extension unit tests
+        # The plugin stage runs `mvn package`, which runs the JUnit tests.
+        run: docker build --target plugin -t lantern-plugin keycloak
+
+      - name: Integration tests (Keycloak and Mailpit in Testcontainers)
+        run: dotnet test --logger "trx;LogFileName=integration.trx" --results-directory TestResults
+
+      - name: Start the stack
+        run: docker compose up -d --build --wait
+
+      - name: Smoke check
+        run: ./scripts/smoke.sh
+
+      - name: Browser tests (Playwright, against the stack)
+        run: dotnet test tests/Lantern.BrowserTests --logger "trx;LogFileName=browser.trx" --results-directory TestResults
+
+      - name: Docs check
+        run: ./scripts/check-docs.sh
+
+      - name: Collect compose logs
+        if: failure()
+        run: mkdir -p TestResults && docker compose logs --no-color > TestResults/compose.log
+
+      - name: Upload test results and Playwright traces
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results
+          path: |
+            TestResults
+            tests/Lantern.BrowserTests/bin/*/*/TestResults
+          retention-days: 7
