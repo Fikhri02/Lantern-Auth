@@ -7,3 +7,4 @@ RUN mvn -q -B package
 
 FROM quay.io/keycloak/keycloak:26.7.5
 COPY --from=plugin /build/target/lantern-keycloak-extensions.jar /opt/keycloak/providers/
+COPY themes/ /opt/keycloak/themes/

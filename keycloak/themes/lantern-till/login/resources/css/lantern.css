@@ -1,0 +1,4 @@
+/* Kiosk: large touch targets for a shared till screen. */
+.lantern-till body, .lantern-till .pf-v5-c-login { background: #b45309; }
+.lantern-till .pf-v5-c-form-control input { font-size: 1.5rem; min-height: 3.5rem; }
+.lantern-till .pf-v5-c-button.pf-m-primary { font-size: 1.4rem; min-height: 4rem; background-color: #b45309; }

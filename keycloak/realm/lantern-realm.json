@@ -146,7 +146,8 @@
         "post.logout.redirect.uris": "http://localhost:5200/*",
         "backchannel.logout.url": "http://backoffice:8080/bff/backchannel-logout",
         "backchannel.logout.session.required": "true",
-        "backchannel.logout.revoke.offline.tokens": "false"
+        "backchannel.logout.revoke.offline.tokens": "false",
+        "login_theme": "lantern-hq"
       },
       "protocolMappers": [
         {
@@ -211,7 +212,8 @@
         "post.logout.redirect.uris": "http://localhost:5300/*",
         "backchannel.logout.url": "http://outlet-admin:8080/bff/backchannel-logout",
         "backchannel.logout.session.required": "true",
-        "backchannel.logout.revoke.offline.tokens": "false"
+        "backchannel.logout.revoke.offline.tokens": "false",
+        "login_theme": "lantern-outlet"
       },
       "protocolMappers": [
         {
@@ -275,7 +277,8 @@
       "attributes": {
         "pkce.code.challenge.method": "S256",
         "post.logout.redirect.uris": "http://localhost:5400/*",
-        "client.session.idle.timeout": "900"
+        "client.session.idle.timeout": "900",
+        "login_theme": "lantern-till"
       },
       "protocolMappers": [
         {
