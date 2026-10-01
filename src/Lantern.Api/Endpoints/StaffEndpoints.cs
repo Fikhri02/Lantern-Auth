@@ -22,17 +22,23 @@ public static partial class StaffEndpoints
             var errors = ValidateNewStaff(body);
             if (errors.Count > 0) return Results.ValidationProblem(errors);
 
-            var id = await kc.CreateStaffAsync(body, ct);
-            return id is null
-                ? Results.Problem(statusCode: StatusCodes.Status409Conflict, title: "Username or email already exists.")
-                : Results.Created($"/staff/{id}", new { id });
+            var result = await kc.CreateStaffAsync(body, ct);
+            if (result.Conflict)
+                return Results.Problem(statusCode: StatusCodes.Status409Conflict, title: "Username or email already exists.");
+            if (result.Errors is not null) return Results.ValidationProblem(result.Errors);
+            return Results.Created($"/staff/{result.Id}", new { id = result.Id, inviteSent = result.InviteSent });
         });
 
-        staff.MapPut("/{id}/departments", async (string id, DepartmentsUpdate body, KeycloakAdminClient kc, CancellationToken ct) =>
+        staff.MapPut("/{id}/departments", async (string id, DepartmentsUpdate body, ClaimsPrincipal user,
+            KeycloakAdminClient kc, CancellationToken ct) =>
         {
             var errors = ValidateDepartments(body.Departments);
             if (errors.Count > 0) return Results.ValidationProblem(errors);
             if (await kc.GetUserAsync(id, ct) is null) return StaffNotFound();
+            if (!await kc.IsHqMemberAsync(id, ct))
+                return Results.Problem(statusCode: StatusCodes.Status400BadRequest, title: "Only HQ staff have departments.");
+            if (id == user.GetSub() && !body.Departments!.Contains("Admin", StringComparer.OrdinalIgnoreCase))
+                return Results.Problem(statusCode: StatusCodes.Status400BadRequest, title: "You can't remove your own Admin department.");
 
             await kc.SetDepartmentsAsync(id, body.Departments!, ct);
             return Results.NoContent();
@@ -42,7 +48,10 @@ public static partial class StaffEndpoints
         {
             if (id == user.GetSub())
                 return Results.Problem(statusCode: StatusCodes.Status400BadRequest, title: "You can't deactivate your own account.");
-            if (await kc.GetUserAsync(id, ct) is null) return StaffNotFound();
+            var target = await kc.GetUserAsync(id, ct);
+            if (target is null) return StaffNotFound();
+            if (KeycloakAdminClient.IsServiceAccount(target))
+                return Results.Problem(statusCode: StatusCodes.Status400BadRequest, title: "Service accounts can't be deactivated here.");
 
             await kc.DeactivateAsync(id, ct);
             return Results.NoContent();

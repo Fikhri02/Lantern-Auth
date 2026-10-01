@@ -15,4 +15,5 @@ public static class Departments
     public static bool IsValid(string department) => Paths.ContainsKey(department);
     public static string ToGroupPath(string department) => Paths[department];
     public static bool IsDepartmentPath(string path) => Paths.Values.Contains(path);
+    public static bool IsHqPath(string path) => path == "/HQ" || path.StartsWith("/HQ/", StringComparison.Ordinal);
 }

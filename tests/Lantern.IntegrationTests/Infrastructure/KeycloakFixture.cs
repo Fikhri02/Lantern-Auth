@@ -194,6 +194,13 @@ public sealed class KeycloakFixture : IAsyncLifetime
         return (create.Headers.Location!.Segments.Last(), username, email);
     }
 
+    public async Task<string> GetUserIdAsync(string username)
+    {
+        using var admin = await AdminClientAsync();
+        var users = await admin.GetFromJsonAsync<JsonElement>($"users?username={Uri.EscapeDataString(username)}&exact=true");
+        return users.EnumerateArray().Single().GetProperty("id").GetString()!;
+    }
+
     public async Task SetUserEnabledAsync(string id, bool enabled)
     {
         using var admin = await AdminClientAsync();

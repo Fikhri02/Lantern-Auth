@@ -138,6 +138,74 @@ public sealed class StaffManagementTests(KeycloakFixture kc)
     }
 
     [Fact]
+    public async Task Staff_list_contains_only_hq_members()
+    {
+        var all = await (await Admin()).GetFromJsonAsync<JsonElement>("/staff");
+        var usernames = all.EnumerateArray().Select(s => s.GetProperty("username").GetString()).ToList();
+        Assert.Contains("chloe.staff", usernames);
+        Assert.DoesNotContain("c-1001", usernames);
+        Assert.DoesNotContain("outlet-bangsar-1", usernames);
+        Assert.DoesNotContain("mgr.bangsar", usernames);
+        Assert.DoesNotContain("service-account-api-admin-svc", usernames);
+    }
+
+    [Fact]
+    public async Task Cashier_cannot_be_given_departments()
+    {
+        var cashierId = await kc.GetUserIdAsync("c-1002");
+
+        var response = await (await Admin()).PutAsJsonAsync($"/staff/{cashierId}/departments", new { departments = new[] { "Admin" } });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        using var admin = await kc.AdminClientAsync();
+        var roles = await admin.GetFromJsonAsync<JsonElement>($"users/{cashierId}/role-mappings/realm/composite");
+        Assert.DoesNotContain("hq-admin", roles.EnumerateArray().Select(r => r.GetProperty("name").GetString()));
+    }
+
+    [Fact]
+    public async Task Admin_cannot_remove_own_admin_department()
+    {
+        var admin = await kc.Api.ClientAsAsync("ben.admin");
+        var me = await admin.GetFromJsonAsync<JsonElement>("/me");
+
+        var response = await admin.PutAsJsonAsync($"/staff/{me.GetProperty("id").GetString()}/departments",
+            new { departments = new[] { "Marketing" } });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("hq-admin", RolesOf(await FindStaffAsync("ben.admin")));
+    }
+
+    [Fact]
+    public async Task Service_account_cannot_be_deactivated()
+    {
+        var serviceAccountId = await kc.GetUserIdAsync("service-account-api-admin-svc");
+
+        var response = await (await Admin()).PostAsync($"/staff/{serviceAccountId}/deactivate", null);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await (await Admin()).GetAsync("/staff")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Name_rejected_by_keycloak_is_400_not_500()
+    {
+        var body = new { username = NewUsername(), firstName = "Nur (HQ)", lastName = "Starter",
+            email = "nur@lantern.test", departments = new[] { "Marketing" } };
+
+        var response = await (await Admin()).PostAsJsonAsync("/staff", body);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Creating_staff_reports_that_the_invite_was_sent()
+    {
+        var response = await (await Admin()).PostAsJsonAsync("/staff", NewStaff(NewUsername(), "Finance"));
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.True(body.GetProperty("inviteSent").GetBoolean());
+    }
+
+    [Fact]
     public async Task Unknown_user_is_404()
     {
         var response = await (await Admin()).PostAsync($"/staff/{Guid.NewGuid()}/deactivate", null);

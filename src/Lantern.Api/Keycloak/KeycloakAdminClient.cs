@@ -12,6 +12,7 @@ namespace Lantern.Api.Keycloak;
 public sealed class KeycloakAdminClient(HttpClient http, IOptions<KeycloakOptions> options, IMemoryCache cache)
 {
     private const string TokenCacheKey = "kc-admin-token";
+    private const string ServiceAccountPrefix = "service-account-";
     private KeycloakOptions Kc => options.Value;
 
     public async Task<IReadOnlyList<StaffMember>> ListStaffAsync(CancellationToken ct)
@@ -21,6 +22,7 @@ public sealed class KeycloakAdminClient(HttpClient http, IOptions<KeycloakOption
         foreach (var u in users)
         {
             var groups = await GetJsonAsync<List<KcGroup>>($"users/{u.Id}/groups", ct);
+            if (!groups.Any(g => Departments.IsHqPath(g.Path))) continue;
             var roles = await GetJsonAsync<List<KcRole>>($"users/{u.Id}/role-mappings/realm/composite", ct);
             result.Add(new StaffMember(
                 u.Id, u.Username, $"{u.FirstName} {u.LastName}".Trim(), u.Email, u.Enabled,
@@ -38,8 +40,13 @@ public sealed class KeycloakAdminClient(HttpClient http, IOptions<KeycloakOption
         return await response.Content.ReadFromJsonAsync<KcUser>(ct);
     }
 
-    /// <returns>The new user's id, or null when the username or email already exists.</returns>
-    public async Task<string?> CreateStaffAsync(NewStaff staff, CancellationToken ct)
+    public static bool IsServiceAccount(KcUser user) =>
+        user.Username.StartsWith(ServiceAccountPrefix, StringComparison.Ordinal);
+
+    public async Task<bool> IsHqMemberAsync(string id, CancellationToken ct) =>
+        (await GetJsonAsync<List<KcGroup>>($"users/{id}/groups", ct)).Any(g => Departments.IsHqPath(g.Path));
+
+    public async Task<CreateStaffResult> CreateStaffAsync(NewStaff staff, CancellationToken ct)
     {
         using var response = await SendAsync(HttpMethod.Post, "users", new
         {
@@ -51,12 +58,32 @@ public sealed class KeycloakAdminClient(HttpClient http, IOptions<KeycloakOption
             emailVerified = true,
             groups = staff.Departments!.Select(Departments.ToGroupPath).ToArray()
         }, ct);
-        if (response.StatusCode == HttpStatusCode.Conflict) return null;
+        if (response.StatusCode == HttpStatusCode.Conflict) return new CreateStaffResult(null, true, null, false);
+        if (response.StatusCode == HttpStatusCode.BadRequest)
+            return new CreateStaffResult(null, false, await ReadValidationErrorAsync(response, ct), false);
         response.EnsureSuccessStatusCode();
 
         var id = response.Headers.Location!.Segments.Last();
-        await SendActionsEmailAsync(id, ["UPDATE_PASSWORD"], ct);
-        return id;
+        try
+        {
+            await SendActionsEmailAsync(id, ["UPDATE_PASSWORD"], ct);
+            return new CreateStaffResult(id, false, null, true);
+        }
+        catch (HttpRequestException)
+        {
+            // The account exists; report it so the admin can resend instead of retrying the create.
+            return new CreateStaffResult(id, false, null, false);
+        }
+    }
+
+    private static async Task<Dictionary<string, string[]>> ReadValidationErrorAsync(HttpResponseMessage response, CancellationToken ct)
+    {
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>(ct);
+        var field = body.TryGetProperty("field", out var f) && f.ValueKind == JsonValueKind.String ? f.GetString()! : "user";
+        var message = body.TryGetProperty("errorMessage", out var m) && m.ValueKind == JsonValueKind.String
+            ? m.GetString()!
+            : "Keycloak rejected this user.";
+        return new Dictionary<string, string[]> { [field] = [message] };
     }
 
     public async Task SetDepartmentsAsync(string id, IReadOnlyCollection<string> departments, CancellationToken ct)
@@ -64,14 +91,15 @@ public sealed class KeycloakAdminClient(HttpClient http, IOptions<KeycloakOption
         var current = await GetJsonAsync<List<KcGroup>>($"users/{id}/groups", ct);
         var wanted = departments.Select(Departments.ToGroupPath).ToHashSet();
 
-        foreach (var group in current.Where(g => Departments.IsDepartmentPath(g.Path) && !wanted.Contains(g.Path)))
-            await SendOkAsync(HttpMethod.Delete, $"users/{id}/groups/{group.Id}", null, ct);
-
+        // Add before removing, so a failure partway never leaves the user with no department.
         foreach (var path in wanted.Where(p => current.All(g => g.Path != p)))
         {
             var group = await GetJsonAsync<KcGroup>($"group-by-path/{path.TrimStart('/')}", ct);
             await SendOkAsync(HttpMethod.Put, $"users/{id}/groups/{group.Id}", null, ct);
         }
+
+        foreach (var group in current.Where(g => Departments.IsDepartmentPath(g.Path) && !wanted.Contains(g.Path)))
+            await SendOkAsync(HttpMethod.Delete, $"users/{id}/groups/{group.Id}", null, ct);
     }
 
     /// <summary>Disable, end online sessions, and revoke till offline sessions (spec §5.4).</summary>
