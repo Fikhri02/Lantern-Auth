@@ -58,5 +58,19 @@ services:
     ports:
       - "8025:8025"
 
+  api:
+    build:
+      context: .
+      dockerfile: src/Lantern.Api/Dockerfile
+    image: lantern-api:dev
+    environment:
+      Keycloak__BaseUrl: http://keycloak:8080
+      Keycloak__Issuer: http://localhost:8080/realms/lantern
+    ports:
+      - "5100:8080"
+    depends_on:
+      keycloak:
+        condition: service_healthy
+
 volumes:
   postgres-data:

@@ -2,7 +2,7 @@
   "realm": "lantern",
   "enabled": true,
   "displayName": "Lantern Mart",
-  "sslRequired": "external",
+  "sslRequired": "none",
   "accessTokenLifespan": 300,
   "ssoSessionIdleTimeout": 1800,
   "ssoSessionMaxLifespan": 36000,
