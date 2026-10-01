@@ -37,9 +37,10 @@
 </section>
 
 @code {
-    [Parameter, EditorRequired] public Func<IReadOnlyList<SaleItem>, Task<SaleResult>> OnCharge { get; set; } = default!;
+    [Parameter, EditorRequired] public Func<Guid, IReadOnlyList<SaleItem>, Task<SaleResult>> OnCharge { get; set; } = default!;
 
     private readonly Dictionary<string, int> cart = new();
+    private Guid saleKey = Guid.NewGuid();
     private Receipt? receipt;
     private string? message;
     private bool busy;
@@ -48,14 +49,16 @@
     {
         cart[sku] = cart.GetValueOrDefault(sku) + 1;
         (receipt, message) = (null, null);
+        saleKey = Guid.NewGuid();
     }
 
     private async Task ChargeAsync()
     {
+        if (busy) return;
         busy = true;
         try
         {
-            var result = await OnCharge(cart.Select(c => new SaleItem(c.Key, c.Value)).ToList());
+            var result = await OnCharge(saleKey, cart.Select(c => new SaleItem(c.Key, c.Value)).ToList());
             if (result.Outcome == SaleOutcome.Ok)
             {
                 receipt = result.Receipt;

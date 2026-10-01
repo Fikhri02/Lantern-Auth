@@ -36,6 +36,7 @@
 
     private async Task SubmitAsync()
     {
+        if (busy) return;
         busy = true;
         try
         {

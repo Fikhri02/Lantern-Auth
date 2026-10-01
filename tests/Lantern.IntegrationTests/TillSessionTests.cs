@@ -187,6 +187,43 @@ public sealed class TillSessionTests(KeycloakFixture kc) : IAsyncLifetime
         Assert.Equal(account, (await offline.Store.FindAsync(device))!.Account);
     }
 
+    [Theory]
+    [InlineData(500, "{\"error\":\"unknown_error\"}")]
+    [InlineData(401, "{\"error\":\"invalid_client\",\"error_description\":\"Invalid client credentials\"}")]
+    public async Task Keycloak_errors_other_than_a_rejected_login_keep_the_registration(int status, string body)
+    {
+        var (device, _, account) = await RegisterAsync();
+        await using var failing = new TillFactory(kc, _dataDir, s =>
+            s.AddHttpClient("keycloak").ConfigurePrimaryHttpMessageHandler(() => new FixedResponseHandler(status, body)));
+
+        var result = await failing.Session.GetStatusAsync(device);
+
+        Assert.True(result.KeycloakUnavailable);
+        Assert.Equal(account, (await failing.Store.FindAsync(device))!.Account);
+    }
+
+    [Fact]
+    public async Task Sign_out_while_keycloak_is_down_keeps_the_registration()
+    {
+        var (device, _, account) = await RegisterAsync();
+        await using var offline = new TillFactory(kc, _dataDir, s =>
+            s.AddHttpClient("keycloak").ConfigurePrimaryHttpMessageHandler(() => new UnreachableHandler()));
+
+        var signedOut = await offline.Session.SignOutTillAsync(device);
+
+        Assert.False(signedOut);
+        Assert.Equal(account, (await offline.Store.FindAsync(device))!.Account);
+    }
+
+    private sealed class FixedResponseHandler(int status, string body) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct) =>
+            Task.FromResult(new HttpResponseMessage((System.Net.HttpStatusCode)status)
+            {
+                Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json")
+            });
+    }
+
     private sealed class UnreachableHandler : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct) =>

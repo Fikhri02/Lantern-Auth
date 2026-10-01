@@ -42,6 +42,10 @@
 
         <footer class="till-footer">
             <button class="link" @onclick="SignOutTillAsync" data-testid="sign-out-till">Sign out this till</button>
+            @if (signOutMessage is not null)
+            {
+                <p class="error" role="alert" data-testid="sign-out-message">@signOutMessage</p>
+            }
         </footer>
     }
 </main>
@@ -50,6 +54,7 @@
     [Parameter] public string? DeviceId { get; set; }
 
     private TillStatus? status;
+    private string? signOutMessage;
     private readonly CancellationTokenSource stop = new();
 
     protected override async Task OnInitializedAsync() => status = await Till.GetStatusAsync(DeviceId, stop.Token);
@@ -83,9 +88,9 @@
         return result;
     }
 
-    private async Task<SaleResult> ChargeAsync(IReadOnlyList<SaleItem> items)
+    private async Task<SaleResult> ChargeAsync(Guid saleKey, IReadOnlyList<SaleItem> items)
     {
-        var result = await Till.RingSaleAsync(DeviceId!, items, stop.Token);
+        var result = await Till.RingSaleAsync(DeviceId!, saleKey, items, stop.Token);
         if (result.Outcome != SaleOutcome.Ok) status = await Till.GetStatusAsync(DeviceId, stop.Token);
         return result;
     }
@@ -98,7 +103,9 @@
 
     private async Task SignOutTillAsync()
     {
-        await Till.SignOutTillAsync(DeviceId!, stop.Token);
+        signOutMessage = await Till.SignOutTillAsync(DeviceId!, stop.Token)
+            ? null
+            : "Sign-in is temporarily unavailable, so this till couldn't be signed out. Try again.";
         status = await Till.GetStatusAsync(DeviceId, stop.Token);
     }
 

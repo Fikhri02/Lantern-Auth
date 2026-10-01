@@ -34,12 +34,26 @@ public sealed class TillSaleTests(KeycloakFixture kc) : IAsyncLifetime
     {
         var (device, _, account) = await RegisterWithCashierAsync();
 
-        var result = await _till.Session.RingSaleAsync(device, TwoCoffees);
+        var result = await _till.Session.RingSaleAsync(device, Guid.NewGuid(), TwoCoffees);
 
         Assert.Equal(SaleOutcome.Ok, result.Outcome);
         Assert.Equal("Siti Aminah (c-1001)", result.Receipt!.ServedBy);
         Assert.Equal(account, result.Receipt.TillAccount);
         Assert.Equal(90.00m, result.Receipt.Total);
+    }
+
+    [Fact]
+    public async Task Double_charge_with_the_same_sale_key_rings_once()
+    {
+        var (device, _, _) = await RegisterWithCashierAsync();
+        var saleKey = Guid.NewGuid();
+
+        var results = await Task.WhenAll(
+            _till.Session.RingSaleAsync(device, saleKey, TwoCoffees),
+            _till.Session.RingSaleAsync(device, saleKey, TwoCoffees));
+
+        Assert.All(results, r => Assert.Equal(SaleOutcome.Ok, r.Outcome));
+        Assert.Equal(results[0].Receipt!.SaleId, results[1].Receipt!.SaleId);
     }
 
     [Fact]
@@ -49,7 +63,7 @@ public sealed class TillSaleTests(KeycloakFixture kc) : IAsyncLifetime
 
         await kc.RevokeTillLoginAsync(accountId); // the outlet access token is still unexpired
 
-        var result = await _till.Session.RingSaleAsync(device, TwoCoffees);
+        var result = await _till.Session.RingSaleAsync(device, Guid.NewGuid(), TwoCoffees);
         Assert.Equal(SaleOutcome.TillSignedOut, result.Outcome);
         Assert.Equal(TillMode.NotRegistered, (await _till.Session.GetStatusAsync(device)).Mode);
     }
@@ -60,7 +74,7 @@ public sealed class TillSaleTests(KeycloakFixture kc) : IAsyncLifetime
         var (device, _, _) = await RegisterWithCashierAsync();
 
         _time.Advance(TimeSpan.FromMinutes(10) + TimeSpan.FromSeconds(1));
-        var result = await _till.Session.RingSaleAsync(device, TwoCoffees);
+        var result = await _till.Session.RingSaleAsync(device, Guid.NewGuid(), TwoCoffees);
 
         Assert.Equal(SaleOutcome.Locked, result.Outcome);
     }
@@ -71,7 +85,7 @@ public sealed class TillSaleTests(KeycloakFixture kc) : IAsyncLifetime
         var (device, _, _) = await RegisterWithCashierAsync();
         await _till.Session.LockAsync(device);
 
-        Assert.Equal(SaleOutcome.Locked, (await _till.Session.RingSaleAsync(device, TwoCoffees)).Outcome);
+        Assert.Equal(SaleOutcome.Locked, (await _till.Session.RingSaleAsync(device, Guid.NewGuid(), TwoCoffees)).Outcome);
     }
 
     [Fact]
@@ -80,7 +94,7 @@ public sealed class TillSaleTests(KeycloakFixture kc) : IAsyncLifetime
         var (device, _, _) = await RegisterWithCashierAsync();
 
         _time.Advance(TimeSpan.FromMinutes(6)); // cashier access token (5 min) expired, but within the idle window
-        var result = await _till.Session.RingSaleAsync(device, TwoCoffees);
+        var result = await _till.Session.RingSaleAsync(device, Guid.NewGuid(), TwoCoffees);
 
         Assert.Equal(SaleOutcome.Ok, result.Outcome);
     }
@@ -90,7 +104,7 @@ public sealed class TillSaleTests(KeycloakFixture kc) : IAsyncLifetime
     {
         var (device, _, _) = await RegisterWithCashierAsync();
 
-        var result = await _till.Session.RingSaleAsync(device, [new SaleItem("SKU-999", 1)]);
+        var result = await _till.Session.RingSaleAsync(device, Guid.NewGuid(), [new SaleItem("SKU-999", 1)]);
 
         Assert.Equal(SaleOutcome.Rejected, result.Outcome);
         Assert.Equal("That sale couldn't be recorded. Check the items and try again.", result.Message);

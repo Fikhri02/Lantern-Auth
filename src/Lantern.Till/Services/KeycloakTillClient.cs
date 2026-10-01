@@ -27,13 +27,27 @@ public sealed class KeycloakTillClient(IHttpClientFactory httpFactory, IOptions<
         return TokenAsync(form, ct);
     }
 
-    /// <summary>Revokes the outlet's offline login (Sign out this till). Best effort.</summary>
-    public Task RevokeAsync(string refreshToken, CancellationToken ct) =>
-        PostBestEffortAsync($"{Oidc}/revoke", new Dictionary<string, string>
+    /// <summary>Revokes the outlet's offline login (Sign out this till).</summary>
+    /// <returns>False when Keycloak could not confirm it; the caller must then keep the registration.</returns>
+    public async Task<bool> RevokeAsync(string refreshToken, CancellationToken ct)
+    {
+        try
         {
-            ["token"] = refreshToken,
-            ["token_type_hint"] = "refresh_token"
-        }, ct);
+            using var response = await httpFactory.CreateClient("keycloak").PostAsync($"{Oidc}/revoke", new FormUrlEncodedContent(
+                new Dictionary<string, string>
+                {
+                    ["token"] = refreshToken,
+                    ["token_type_hint"] = "refresh_token",
+                    ["client_id"] = Options.ClientId,
+                    ["client_secret"] = Options.ClientSecret
+                }), ct);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception e) when (e is HttpRequestException || e is TaskCanceledException && !ct.IsCancellationRequested)
+        {
+            return false;
+        }
+    }
 
     /// <summary>Ends a cashier's Keycloak session. Best effort.</summary>
     public Task LogoutAsync(string refreshToken, CancellationToken ct) =>
@@ -55,10 +69,14 @@ public sealed class KeycloakTillClient(IHttpClientFactory httpFactory, IOptions<
                     body.TryGetProperty("refresh_token", out var refresh) ? refresh.GetString() : null,
                     body.GetProperty("expires_in").GetInt32()), null);
 
-            var error = body.TryGetProperty("error_description", out var description) ? description.GetString()
-                : body.TryGetProperty("error", out var code) ? code.GetString()
-                : null;
-            return (null, error ?? "unknown_error");
+            var oauthError = body.TryGetProperty("error", out var code) ? code.GetString() : null;
+            // Only a 400 invalid_grant means Keycloak looked at the grant and said no. Anything else (5xx,
+            // invalid_client after a secret rotation, …) is Keycloak or config trouble, reported as unavailable
+            // so a till is never unregistered by it.
+            if (response.StatusCode != System.Net.HttpStatusCode.BadRequest || oauthError != "invalid_grant")
+                return (null, TillMessages.Unavailable);
+            var error = body.TryGetProperty("error_description", out var description) ? description.GetString() : null;
+            return (null, error ?? oauthError);
         }
         catch (Exception e) when (e is HttpRequestException or JsonException ||
                                   e is TaskCanceledException && !ct.IsCancellationRequested)

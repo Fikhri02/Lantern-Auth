@@ -32,6 +32,8 @@ public sealed class TillSessionService(
         public string? OutletAccessToken { get; set; }
         public DateTimeOffset OutletExpiresAt { get; set; }
         public CashierSession? Cashier { get; set; }
+        public Guid? LastSaleKey { get; set; }
+        public SaleResult? LastSale { get; set; }
     }
 
     private readonly ConcurrentDictionary<string, DeviceState> _devices = new();
@@ -86,9 +88,12 @@ public sealed class TillSessionService(
     /// Spec §6.2 step 6 and §6.5: re-check the outlet login before every sale, refuse when idle or locked,
     /// and send the sale under the cashier's token.
     /// </summary>
-    public async Task<SaleResult> RingSaleAsync(string deviceId, IReadOnlyList<SaleItem> items, CancellationToken ct = default) =>
+    public async Task<SaleResult> RingSaleAsync(string deviceId, Guid saleKey, IReadOnlyList<SaleItem> items, CancellationToken ct = default) =>
         await WithDeviceAsync(deviceId, async (state, registration) =>
         {
+            // A double tap (or a retry) sends the same cart key again: answer with the first receipt.
+            if (state.LastSaleKey == saleKey && state.LastSale is { } previous) return previous;
+
             var outlet = await EnsureOutletAsync(registration, state, force: true, ct);
             if (outlet == OutletCheck.SignedOut)
                 return new SaleResult(SaleOutcome.TillSignedOut, null, TillMessages.For("outlet_session_invalid"));
@@ -109,7 +114,9 @@ public sealed class TillSessionService(
                 });
 
             cashier.LastActivity = time.GetUtcNow();
-            return new SaleResult(SaleOutcome.Ok, receipt, "");
+            var sale = new SaleResult(SaleOutcome.Ok, receipt, "");
+            (state.LastSaleKey, state.LastSale) = (saleKey, sale);
+            return sale;
         }, new SaleResult(SaleOutcome.TillSignedOut, null, TillMessages.For("outlet_session_invalid")), ct);
 
     private async Task<bool> EnsureCashierTokenAsync(DeviceState state, CashierSession cashier, CancellationToken ct)
@@ -137,10 +144,11 @@ public sealed class TillSessionService(
         }, false, ct);
 
     /// <summary>Spec §6.1: revoke the offline login and delete the registration, freeing the account.</summary>
-    public Task SignOutTillAsync(string deviceId, CancellationToken ct = default) =>
+    /// <returns>False when Keycloak couldn't confirm the revoke; the registration is then kept, or the account would stay taken.</returns>
+    public Task<bool> SignOutTillAsync(string deviceId, CancellationToken ct = default) =>
         WithDeviceAsync(deviceId, async (state, registration) =>
         {
-            await keycloak.RevokeAsync(registration.RefreshToken, ct);
+            if (!await keycloak.RevokeAsync(registration.RefreshToken, ct)) return false;
             await ForgetRegistrationAsync(registration, state, ct);
             return true;
         }, false, ct);
