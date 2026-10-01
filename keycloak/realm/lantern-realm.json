@@ -646,6 +646,14 @@
       ],
       "realmRoles": [
         "cashier"
+      ],
+      "credentials": [
+        {
+          "type": "lantern-pin",
+          "userLabel": "PIN",
+          "secretData": "{\"value\":\"3GuRmRnDpfHBmogDsg4sL8hQQO2h/kPKaDvjZeS8B9jAuFT9HH1TSLo/MzcgaY160uQPIY0bLcA6bxHXaG/l7g==\",\"salt\":\"oggpEfcgENlLeEq3BiCZVQ==\",\"algorithmData\":{}}",
+          "credentialData": "{\"hashIterations\":210000,\"algorithm\":\"pbkdf2-sha512\",\"algorithmData\":{}}"
+        }
       ]
     },
     {
@@ -660,6 +668,14 @@
       ],
       "realmRoles": [
         "cashier"
+      ],
+      "credentials": [
+        {
+          "type": "lantern-pin",
+          "userLabel": "PIN",
+          "secretData": "{\"value\":\"GBfeOrCDJmyEDVX+cUagYY/OvppAByAZ3dycNHKmyX6rQHHq2qFsPAuP/LrFg5T01hn36fcRtXpiTz9MH1DIow==\",\"salt\":\"32g+x9VobnPJjJS+TEcNdA==\",\"algorithmData\":{}}",
+          "credentialData": "{\"hashIterations\":210000,\"algorithm\":\"pbkdf2-sha512\",\"algorithmData\":{}}"
+        }
       ]
     },
     {
@@ -674,6 +690,14 @@
       ],
       "realmRoles": [
         "cashier"
+      ],
+      "credentials": [
+        {
+          "type": "lantern-pin",
+          "userLabel": "PIN",
+          "secretData": "{\"value\":\"tiPcAYt8zqV1OPmy3UznqpJu6SIRlsYtD33NNirLhgXbgZD+x3v5t90l8H5HDhB/SJFOyDKQHnj1aw7oDhOyIQ==\",\"salt\":\"3YTqcANrL/wO9V2xSRErpQ==\",\"algorithmData\":{}}",
+          "credentialData": "{\"hashIterations\":210000,\"algorithm\":\"pbkdf2-sha512\",\"algorithmData\":{}}"
+        }
       ]
     },
     {
@@ -688,6 +712,14 @@
       ],
       "realmRoles": [
         "cashier"
+      ],
+      "credentials": [
+        {
+          "type": "lantern-pin",
+          "userLabel": "PIN",
+          "secretData": "{\"value\":\"5io6nj2AHsKJ2+mZ136TEV0wo8XVjNqCCSsXV8YnbpaBD6rJDp+GpBgv0Tr1/9KI5zakDo+SM0inuBee6plXIA==\",\"salt\":\"lzkGlDv6y6FC3Ft4aojF0Q==\",\"algorithmData\":{}}",
+          "credentialData": "{\"hashIterations\":210000,\"algorithm\":\"pbkdf2-sha512\",\"algorithmData\":{}}"
+        }
       ]
     },
     {
@@ -702,6 +734,14 @@
       ],
       "realmRoles": [
         "cashier"
+      ],
+      "credentials": [
+        {
+          "type": "lantern-pin",
+          "userLabel": "PIN (temporary)",
+          "secretData": "{\"value\":\"olXvoAwiN77KgMs1OwS/qtPUyVtTCI7jp8+7+NEeNS6fxC2Bjs2m5U/tPPJdbes2kuHQC17m3lepABPUG1QROA==\",\"salt\":\"62OUWG1SQFa1h+vvoQ6sgg==\",\"algorithmData\":{}}",
+          "credentialData": "{\"hashIterations\":210000,\"algorithm\":\"pbkdf2-sha512\",\"algorithmData\":{\"lantern-temporary\":[\"true\"]}}"
+        }
       ]
     }
   ]

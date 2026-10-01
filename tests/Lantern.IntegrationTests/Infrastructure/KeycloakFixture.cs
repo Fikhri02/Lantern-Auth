@@ -266,6 +266,42 @@ public sealed class KeycloakFixture : IAsyncLifetime
         response.EnsureSuccessStatusCode();
     }
 
+    public async Task<string> ServiceTokenAsync()
+    {
+        using var response = await Http.PostAsync($"{Issuer}/protocol/openid-connect/token", new FormUrlEncodedContent(
+            new Dictionary<string, string>
+            {
+                ["grant_type"] = "client_credentials",
+                ["client_id"] = "api-admin-svc",
+                ["client_secret"] = "api-admin-svc-dev-secret"
+            }));
+        response.EnsureSuccessStatusCode();
+        return (string)JsonNode.Parse(await response.Content.ReadAsStringAsync())!["access_token"]!;
+    }
+
+    public async Task SetPinAsync(string userId, string pin, bool temporary)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Put, $"{Issuer}/lantern-pin/users/{userId}")
+        {
+            Content = JsonContent.Create(new { pin, temporary })
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", await ServiceTokenAsync());
+        using var response = await Http.SendAsync(request);
+        if (response.StatusCode != HttpStatusCode.NoContent)
+            throw new InvalidOperationException($"Setting PIN failed: {(int)response.StatusCode} {await response.Content.ReadAsStringAsync()}");
+    }
+
+    public async Task<(string Id, string Username)> CreateTempCashierAsync(string outletGroupPath, string? pin = null, bool temporary = false)
+    {
+        var (id, username, _) = await CreateTempUserAsync(outletGroupPath);
+        using var admin = await AdminClientAsync();
+        var role = await admin.GetFromJsonAsync<JsonObject>("roles/cashier");
+        using var map = await admin.PostAsJsonAsync($"users/{id}/role-mappings/realm", new[] { role });
+        map.EnsureSuccessStatusCode();
+        if (pin is not null) await SetPinAsync(id, pin, temporary);
+        return (id, username);
+    }
+
     public async Task<int> WaitForEmailCountAsync(string email, int atLeast, TimeSpan? timeout = null)
     {
         var deadline = DateTime.UtcNow + (timeout ?? TimeSpan.FromSeconds(15));
