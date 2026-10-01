@@ -10,6 +10,7 @@ namespace Lantern.Till.Services;
 public sealed class TillSessionService(
     TillRegistrationStore store,
     KeycloakTillClient keycloak,
+    LanternApiClient api,
     IOptions<TillOptions> options,
     TimeProvider time)
 {
@@ -80,6 +81,53 @@ public sealed class TillSessionService(
             };
             return new PinResult(true, null, "", false, false);
         }, SignedOut(), ct);
+
+    /// <summary>
+    /// Spec §6.2 step 6 and §6.5: re-check the outlet login before every sale, refuse when idle or locked,
+    /// and send the sale under the cashier's token.
+    /// </summary>
+    public async Task<SaleResult> RingSaleAsync(string deviceId, IReadOnlyList<SaleItem> items, CancellationToken ct = default) =>
+        await WithDeviceAsync(deviceId, async (state, registration) =>
+        {
+            var outlet = await EnsureOutletAsync(registration, state, force: true, ct);
+            if (outlet == OutletCheck.SignedOut)
+                return new SaleResult(SaleOutcome.TillSignedOut, null, TillMessages.For("outlet_session_invalid"));
+            if (outlet == OutletCheck.Unavailable)
+                return new SaleResult(SaleOutcome.Rejected, null, TillMessages.For(TillMessages.Unavailable));
+
+            await ExpireIdleCashierAsync(state, ct);
+            if (state.Cashier is not { } cashier || !await EnsureCashierTokenAsync(state, cashier, ct))
+                return new SaleResult(SaleOutcome.Locked, null, "Sign in with your PIN to continue.");
+
+            var (receipt, status) = await api.RingSaleAsync(registration.OutletId, cashier.AccessToken, items, ct);
+            if (receipt is null)
+                return new SaleResult(SaleOutcome.Rejected, null, status switch
+                {
+                    400 => "That sale couldn't be recorded. Check the items and try again.",
+                    401 or 403 => "You don't have permission to ring sales here.",
+                    _ => "The sale couldn't be sent. Try again."
+                });
+
+            cashier.LastActivity = time.GetUtcNow();
+            return new SaleResult(SaleOutcome.Ok, receipt, "");
+        }, new SaleResult(SaleOutcome.TillSignedOut, null, TillMessages.For("outlet_session_invalid")), ct);
+
+    private async Task<bool> EnsureCashierTokenAsync(DeviceState state, CashierSession cashier, CancellationToken ct)
+    {
+        var now = time.GetUtcNow();
+        if (cashier.AccessExpiresAt - now > TimeSpan.FromSeconds(30)) return true;
+
+        var (tokens, _) = await keycloak.RefreshAsync(cashier.RefreshToken, ct);
+        if (tokens is null)
+        {
+            await EndCashierAsync(state, ct);
+            return false;
+        }
+        cashier.AccessToken = tokens.AccessToken;
+        cashier.RefreshToken = tokens.RefreshToken ?? cashier.RefreshToken;
+        cashier.AccessExpiresAt = now.AddSeconds(tokens.ExpiresIn);
+        return true;
+    }
 
     public Task LockAsync(string deviceId, CancellationToken ct = default) =>
         WithDeviceAsync(deviceId, async (state, _) =>

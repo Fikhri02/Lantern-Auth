@@ -25,6 +25,7 @@ public static class TillSetup
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<TillRegistrationStore>();
         services.AddSingleton<KeycloakTillClient>();
+        services.AddSingleton<LanternApiClient>();
         services.AddSingleton<TillSessionService>();
         services.AddHttpClient("keycloak", c => c.Timeout = TimeSpan.FromSeconds(10));
         services.AddHttpClient("lantern-api", c => c.Timeout = TimeSpan.FromSeconds(10));
