@@ -1,0 +1,3 @@
+dev.lantern.keycloak.OutletSessionCheckAuthenticator
+dev.lantern.keycloak.CashierCheckAuthenticator
+dev.lantern.keycloak.PinCheckAuthenticator

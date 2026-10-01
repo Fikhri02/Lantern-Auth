@@ -302,6 +302,36 @@ public sealed class KeycloakFixture : IAsyncLifetime
         return (id, username);
     }
 
+    /// <summary>A fresh temporary till account in the outlet, signed in the way the till does it.</summary>
+    public async Task<OpenTill> OpenTillAsync(string outletGroupPath)
+    {
+        var (id, account) = await CreateTempTillAsync(outletGroupPath);
+        var tokens = await OutletLoginAsync(account);
+        var (status, body) = await RefreshTillTokenAsync(tokens.RefreshToken);
+        if (status != HttpStatusCode.OK) throw new InvalidOperationException($"Outlet refresh failed: {body}");
+        return new OpenTill(id, account, tokens.RefreshToken, (string)body["access_token"]!);
+    }
+
+    /// <summary>The till server's PIN request: password grant on the till client, routed to till-cashier-pin.</summary>
+    public async Task<(HttpStatusCode Status, JsonNode Body)> CashierPinAsync(string? outletToken, string username, string? pin, string? newPin = null)
+    {
+        var form = new Dictionary<string, string>
+        {
+            ["grant_type"] = "password",
+            ["client_id"] = OidcBrowser.TillClientId,
+            ["client_secret"] = OidcBrowser.TillClientSecret,
+            ["username"] = username,
+            ["scope"] = "openid"
+        };
+        if (outletToken is not null) form["outlet_token"] = outletToken;
+        if (pin is not null) form["pin"] = pin;
+        if (newPin is not null) form["new_pin"] = newPin;
+        using var response = await Http.PostAsync($"{Issuer}/protocol/openid-connect/token", new FormUrlEncodedContent(form));
+        return (response.StatusCode, JsonNode.Parse(await response.Content.ReadAsStringAsync())!);
+    }
+
+    public static string? ErrorCode(JsonNode body) => (string?)body["error_description"];
+
     public async Task<int> WaitForEmailCountAsync(string email, int atLeast, TimeSpan? timeout = null)
     {
         var deadline = DateTime.UtcNow + (timeout ?? TimeSpan.FromSeconds(15));
