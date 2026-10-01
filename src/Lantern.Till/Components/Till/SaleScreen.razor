@@ -2,7 +2,7 @@
     <div class="catalog">
         @foreach (var item in TillCatalog.Items)
         {
-            <button data-testid="add-@item.Sku" @onclick="() => Add(item.Sku)">@item.Name</button>
+            <button disabled="@(!RendererInfo.IsInteractive)" data-testid="add-@item.Sku" @onclick="() => Add(item.Sku)">@item.Name</button>
         }
     </div>
 
@@ -13,7 +13,7 @@
         }
     </ul>
 
-    <button class="primary" data-testid="charge" disabled="@(cart.Count == 0 || busy)" @onclick="ChargeAsync">Charge</button>
+    <button class="primary" data-testid="charge" disabled="@(cart.Count == 0 || busy || !RendererInfo.IsInteractive)" @onclick="ChargeAsync">Charge</button>
 
     @if (!string.IsNullOrEmpty(message))
     {

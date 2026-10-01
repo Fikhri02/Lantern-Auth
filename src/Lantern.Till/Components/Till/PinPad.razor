@@ -2,19 +2,19 @@
     <h1>@(changing ? "Choose a new PIN" : "Cashier sign-in")</h1>
 
     <label>Cashier code
-        <input data-testid="cashier-code" @bind="code" disabled="@changing" autocomplete="off" />
+        <input data-testid="cashier-code" @bind="code" disabled="@(changing || !RendererInfo.IsInteractive)" autocomplete="off" />
     </label>
     <label>@(changing ? "Temporary PIN" : "PIN")
-        <input data-testid="pin" type="password" inputmode="numeric" @bind="pin" disabled="@changing" autocomplete="off" />
+        <input data-testid="pin" type="password" inputmode="numeric" @bind="pin" disabled="@(changing || !RendererInfo.IsInteractive)" autocomplete="off" />
     </label>
     @if (changing)
     {
         <label>New PIN
-            <input data-testid="new-pin" type="password" inputmode="numeric" @bind="newPin" autocomplete="off" />
+            <input disabled="@(!RendererInfo.IsInteractive)" data-testid="new-pin" type="password" inputmode="numeric" @bind="newPin" autocomplete="off" />
         </label>
     }
 
-    <button class="primary" data-testid="pin-submit" disabled="@busy" @onclick="SubmitAsync">
+    <button class="primary" data-testid="pin-submit" disabled="@(busy || !RendererInfo.IsInteractive)" @onclick="SubmitAsync">
         @(changing ? "Save PIN and sign in" : "Sign in")
     </button>
 

@@ -22,7 +22,7 @@
             @if (status.Cashier is { } cashier)
             {
                 <span class="cashier" data-testid="cashier">@cashier.Name (@cashier.Code)</span>
-                <button @onclick="LockAsync" data-testid="lock">Lock</button>
+                <button disabled="@(!RendererInfo.IsInteractive)" @onclick="LockAsync" data-testid="lock">Lock</button>
             }
         </header>
 
@@ -41,7 +41,7 @@
         }
 
         <footer class="till-footer">
-            <button class="link" @onclick="SignOutTillAsync" data-testid="sign-out-till">Sign out this till</button>
+            <button disabled="@(!RendererInfo.IsInteractive)" class="link" @onclick="SignOutTillAsync" data-testid="sign-out-till">Sign out this till</button>
             @if (signOutMessage is not null)
             {
                 <p class="error" role="alert" data-testid="sign-out-message">@signOutMessage</p>
@@ -85,13 +85,18 @@
     {
         var result = await Till.SignInCashierAsync(DeviceId!, attempt, stop.Token);
         status = await Till.GetStatusAsync(DeviceId, stop.Token);
+        StateHasChanged(); // a Func parameter (unlike EventCallback) only re-renders the child that raised it
         return result;
     }
 
     private async Task<SaleResult> ChargeAsync(Guid saleKey, IReadOnlyList<SaleItem> items)
     {
         var result = await Till.RingSaleAsync(DeviceId!, saleKey, items, stop.Token);
-        if (result.Outcome != SaleOutcome.Ok) status = await Till.GetStatusAsync(DeviceId, stop.Token);
+        if (result.Outcome != SaleOutcome.Ok)
+        {
+            status = await Till.GetStatusAsync(DeviceId, stop.Token);
+            StateHasChanged();
+        }
         return result;
     }
 
