@@ -92,6 +92,40 @@ services:
       api:
         condition: service_started
 
+  backoffice:
+    build:
+      context: .
+      dockerfile: src/Lantern.BackOffice/Dockerfile
+    image: lantern-backoffice:dev
+    environment:
+      Lantern__KeycloakBaseUrl: http://keycloak:8080
+      Lantern__Issuer: http://localhost:8080/realms/lantern
+      Lantern__ApiBaseUrl: http://api:8080
+    ports:
+      - "127.0.0.1:5200:8080"
+    depends_on:
+      keycloak:
+        condition: service_healthy
+      api:
+        condition: service_started
+
+  outlet-admin:
+    build:
+      context: .
+      dockerfile: src/Lantern.OutletAdmin/Dockerfile
+    image: lantern-outlet-admin:dev
+    environment:
+      Lantern__KeycloakBaseUrl: http://keycloak:8080
+      Lantern__Issuer: http://localhost:8080/realms/lantern
+      Lantern__ApiBaseUrl: http://api:8080
+    ports:
+      - "127.0.0.1:5300:8080"
+    depends_on:
+      keycloak:
+        condition: service_healthy
+      api:
+        condition: service_started
+
 volumes:
   postgres-data:
   till-data:

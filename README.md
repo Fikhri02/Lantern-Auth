@@ -4,8 +4,8 @@ A learning and portfolio project: staff login for a fictional retail chain, **La
 Keycloak. Three web apps and one API share one identity server. The hard case is a shared till: an
 outlet account signs the till in once and stays signed in, then cashiers identify themselves with a PIN.
 
-> Work in progress. Plans 1–3 of 5 (foundation, till backend, till app) are done. See
-> `docs/superpowers/plans/2026-10-01-roadmap.md`.
+> Work in progress. Plans 1–4 of 5 are done: foundation, till backend, till app and web apps. Plan 5
+> (browser tests, CI, scenario docs) is next. See `docs/superpowers/plans/2026-10-01-roadmap.md`.
 
 ## Run it
 
@@ -22,6 +22,8 @@ docker compose up -d --build --wait
 | API | http://localhost:5100/health |
 | Mailpit (catches emails) | http://localhost:8025 |
 | Till (sign in as `outlet-bangsar-2`, then PIN `c-1001` / `1111`) | http://localhost:5400 |
+| Back Office (HQ staff, e.g. `dina.marketing`; admins set up an authenticator app) | http://localhost:5200 |
+| Outlet Admin (managers, e.g. `mgr.bangsar`) | http://localhost:5300 |
 
 Demo users and their roles are listed in the design spec, §4.7
 (`docs/superpowers/specs/2026-10-01-lantern-auth-design.md`). Every password is `Lantern!2026`.
@@ -43,6 +45,15 @@ this stack to a network; production would need TLS, real secrets and a hardened 
    `DELETE /outlets/BGS/tills/{id}/session` on the API.
 
 Cashier `c-3001` (PJ) has a temporary PIN `5555` and is asked to choose a new one.
+
+## Try single sign-on and single logout
+
+1. Sign in to Back Office as `aisha.admin`. Keycloak asks her to set up an authenticator app (MFA is for
+   HQ admins only).
+2. Open Outlet Admin in the same browser: no second sign-in.
+3. Sign out of Back Office, then reload Outlet Admin: you're signed out there too (back-channel logout).
+4. Try `mgr.bangsar` on Back Office: Keycloak refuses with "Your account doesn't have access to Back Office."
+5. On Back Office → Promotions, a non-marketing user can press **Try it anyway** and see the API's 403.
 
 ## Tests
 
