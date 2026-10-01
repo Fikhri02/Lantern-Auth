@@ -18,6 +18,14 @@
 
 <p><a href="/tills?outlet=@outletId" data-testid="nav-tills">Tills</a></p>
 
+<section class="muted" data-testid="roles">
+    Signed in with:
+    @foreach (var role in roles)
+    {
+        <span class="role" data-testid="role-@role">@role</span>
+    }
+</section>
+
 <section class="card">
     <h2>Stock</h2>
     <table class="table">
@@ -47,13 +55,15 @@
 
     private string outletId = "";
     private bool isAdmin;
+    private string[] roles = [];
     private List<StockLine> stock = [];
     private List<RosterEntry> roster = [];
 
     protected override async Task OnInitializedAsync()
     {
         var user = (await AuthState).User;
-        isAdmin = LanternRoles.Of(user).Contains(LanternRoles.HqAdmin);
+        roles = LanternRoles.Of(user);
+        isAdmin = roles.Contains(LanternRoles.HqAdmin);
         // Managers always see their own outlet; only hq-admin may choose (plan decision 2).
         outletId = isAdmin ? (RequestedOutlet?.ToUpperInvariant() ?? "BGS") : user.FindFirst("outlet_id")?.Value ?? "";
         stock = (await Api.GetAsync<List<StockLine>>(user, $"/outlets/{outletId}/stock")).Value ?? [];
