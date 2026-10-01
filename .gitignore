@@ -6,3 +6,4 @@ target/
 *.user
 TestResults/
 src/Lantern.Till/data/
+.playwright/
