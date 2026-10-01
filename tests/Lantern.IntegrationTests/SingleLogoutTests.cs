@@ -74,6 +74,37 @@ public sealed class SingleLogoutTests(KeycloakFixture kc) : IAsyncLifetime
         Assert.Contains("invalid_logout_token", await response.Content.ReadAsStringAsync()); // the endpoint's own refusal
     }
 
+    [Fact]
+    public async Task Real_logout_token_for_outlet_admin_is_refused_by_back_office()
+    {
+        var (id, admin, _) = await kc.CreateTempUserAsync("/HQ/Admin");
+        using var browser = new AppBrowser((AppBrowser.OutletAdminOrigin, _oa.Handler()));
+        await browser.SignInAsync(AppBrowser.OutletAdminOrigin + "/", admin, totp: new Totp());
+        var capture = new CapturingHandler();
+        kc.Relay.Route("outlet-admin", capture);
+
+        await kc.LogoutUserAsync(id); // Keycloak sends outlet-admin a signed logout token; we keep it
+        var outletAdminToken = await capture.Token.Task.WaitAsync(TimeSpan.FromSeconds(15));
+        using var client = _bo.CreateClient();
+        var response = await client.PostAsync("/bff/backchannel-logout",
+            new FormUrlEncodedContent(new Dictionary<string, string> { ["logout_token"] = outletAdminToken }));
+
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("invalid_logout_token", await response.Content.ReadAsStringAsync());
+    }
+
+    private sealed class CapturingHandler : HttpMessageHandler
+    {
+        public TaskCompletionSource<string> Token { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        {
+            var form = System.Web.HttpUtility.ParseQueryString(await request.Content!.ReadAsStringAsync(ct));
+            Token.TrySetResult(form["logout_token"]!);
+            return new HttpResponseMessage(System.Net.HttpStatusCode.OK);
+        }
+    }
+
     public async Task DisposeAsync()
     {
         await _bo.DisposeAsync();

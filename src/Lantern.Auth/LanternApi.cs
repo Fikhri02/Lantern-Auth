@@ -25,8 +25,8 @@ public sealed class LanternApi(IHttpClientFactory http, AccessTokenProvider toke
 
     private async Task<ApiResult<T>> SendAsync<T>(ClaimsPrincipal user, HttpMethod method, string path, object? body, CancellationToken ct)
     {
-        var token = await tokens.GetAccessTokenAsync(user, ct);
-        if (token is null) return new ApiResult<T>(401, default, null);
+        var (outcome, token) = await tokens.GetAsync(user, ct);
+        if (token is null) return new ApiResult<T>(outcome == TokenOutcome.Unavailable ? 503 : 401, default, null);
 
         using var request = new HttpRequestMessage(method, $"{options.Value.ApiBaseUrl.TrimEnd('/')}{path}");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);

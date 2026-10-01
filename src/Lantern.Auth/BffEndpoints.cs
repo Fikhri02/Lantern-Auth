@@ -12,7 +12,7 @@ public static class BffEndpoints
     public static IEndpointRouteBuilder MapLanternBff(this IEndpointRouteBuilder app)
     {
         app.MapGet("/bff/login", (string? returnUrl) =>
-            Results.Challenge(new AuthenticationProperties { RedirectUri = LocalOnly(returnUrl) },
+            Results.Challenge(new AuthenticationProperties { RedirectUri = ReturnUrls.LocalOnly(returnUrl) },
                 [OpenIdConnectDefaults.AuthenticationScheme]));
 
         // The sid parameter must match the signed-in session, so a link on another site can't sign anyone out.
@@ -41,9 +41,4 @@ public static class BffEndpoints
 
         return app;
     }
-
-    private static string LocalOnly(string? returnUrl) =>
-        returnUrl is { Length: > 0 } && returnUrl.StartsWith('/') && !returnUrl.StartsWith("//") && !returnUrl.StartsWith("/\\")
-            ? returnUrl
-            : "/";
 }

@@ -52,6 +52,23 @@ public sealed class SsoAndAccessTests(KeycloakFixture kc) : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Hq_admin_cannot_skip_mfa_by_signing_in_somewhere_else_first()
+    {
+        // Keycloak's own account console uses the realm's default browser flow; its cookie would
+        // otherwise let the admin into Back Office through SSO without ever setting up MFA.
+        var (_, admin, _) = await kc.CreateTempUserAsync("/HQ/Admin");
+        using var browser = NewBrowser();
+        var login = await browser.GetAsync(
+            $"{kc.Issuer}/protocol/openid-connect/auth?client_id=account-console&response_type=code&scope=openid" +
+            $"&redirect_uri={Uri.EscapeDataString(kc.Issuer + "/account/")}" +
+            "&code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM&code_challenge_method=S256");
+
+        var next = await browser.SubmitPasswordAsync(login, admin);
+
+        Assert.True(AppBrowser.AsksToSetUpTotp(next));
+    }
+
+    [Fact]
     public async Task Staff_without_admin_role_are_not_asked_for_mfa()
     {
         using var browser = NewBrowser();

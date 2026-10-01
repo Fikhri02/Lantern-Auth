@@ -43,6 +43,14 @@ public static class LanternBffSetup
                 o.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
                 o.SessionStore = sessions;
                 o.AccessDeniedPath = "/access-denied";
+                // Spec §5.1: tokens are refreshed when the cookie is validated; a refused refresh means the
+                // Keycloak session is over, so the user is sent to sign in instead of seeing empty pages.
+                o.Events.OnValidatePrincipal = async context =>
+                {
+                    var tokens = context.HttpContext.RequestServices.GetRequiredService<AccessTokenProvider>();
+                    var (outcome, _) = await tokens.GetAsync(context.Principal!, context.HttpContext.RequestAborted);
+                    if (outcome == TokenOutcome.SessionEnded) context.RejectPrincipal();
+                };
             });
 
         services.AddOptions<OpenIdConnectOptions>(OpenIdConnectDefaults.AuthenticationScheme)
@@ -70,6 +78,13 @@ public static class LanternBffSetup
                 o.CorrelationCookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
                 o.NonceCookie.SameSite = SameSiteMode.Lax;
                 o.NonceCookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+                o.Events.OnRemoteFailure = context =>
+                {
+                    // A stale or forged callback, or the user cancelling at Keycloak: a plain page, not a 500.
+                    context.Response.Redirect("/signin-problem");
+                    context.HandleResponse();
+                    return Task.CompletedTask;
+                };
             });
 
         services.AddCascadingAuthenticationState();

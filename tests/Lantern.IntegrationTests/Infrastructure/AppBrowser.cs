@@ -26,6 +26,13 @@ public sealed partial class AppBrowser : IDisposable
 
     public static bool IsKeycloakLogin(BrowserPage page) => FormAction(page.Html, "kc-form-login") is not null;
 
+    public static bool AsksToSetUpTotp(BrowserPage page) => FormAction(page.Html, "kc-totp-settings-form") is not null;
+
+    /// <summary>Fills in Keycloak's password form only, so a test can see what Keycloak asks for next.</summary>
+    public Task<BrowserPage> SubmitPasswordAsync(BrowserPage loginPage, string username, string password = KeycloakFixture.DemoPassword) =>
+        PostAsync(FormAction(loginPage.Html, "kc-form-login") ?? throw new InvalidOperationException("Not a Keycloak login page"),
+            new() { ["username"] = username, ["password"] = password, ["credentialId"] = "" });
+
     /// <summary>Opens <paramref name="url"/>; if Keycloak asks, signs in (enrolling or answering TOTP when it asks).</summary>
     public async Task<BrowserPage> SignInAsync(string url, string username, string password = KeycloakFixture.DemoPassword, Totp? totp = null)
     {

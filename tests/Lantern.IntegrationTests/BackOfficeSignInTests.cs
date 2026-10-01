@@ -69,6 +69,15 @@ public sealed class BackOfficeSignInTests(KeycloakFixture kc) : IAsyncLifetime
         Assert.Equal(1, await kc.UserSessionCountAsync(id));
     }
 
+    [Fact]
+    public async Task Stale_sign_in_callback_shows_a_plain_message_not_an_error_page()
+    {
+        var page = await _browser.GetAsync(AppBrowser.BackOfficeOrigin + "/signin-oidc?code=stale&state=forged");
+
+        Assert.Equal(200, page.Status);
+        Assert.Contains("data-testid=\"signin-problem\"", page.Html);
+    }
+
     public async Task DisposeAsync()
     {
         _browser.Dispose();
