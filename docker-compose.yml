@@ -72,5 +72,26 @@ services:
       keycloak:
         condition: service_healthy
 
+  till:
+    build:
+      context: .
+      dockerfile: src/Lantern.Till/Dockerfile
+    image: lantern-till:dev
+    environment:
+      Till__KeycloakBaseUrl: http://keycloak:8080
+      Till__Issuer: http://localhost:8080/realms/lantern
+      Till__ApiBaseUrl: http://api:8080
+      Till__DataDirectory: /data
+    volumes:
+      - till-data:/data
+    ports:
+      - "127.0.0.1:5400:8080"
+    depends_on:
+      keycloak:
+        condition: service_healthy
+      api:
+        condition: service_started
+
 volumes:
   postgres-data:
+  till-data:
