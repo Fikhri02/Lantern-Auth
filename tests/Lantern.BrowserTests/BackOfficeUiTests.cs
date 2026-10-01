@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Lantern.IntegrationTests.Infrastructure;
 using Microsoft.Playwright;
 using static Microsoft.Playwright.Assertions;
@@ -7,9 +8,9 @@ namespace Lantern.BrowserTests;
 [Collection(StackCollection.Name)]
 public sealed class BackOfficeUiTests(StackFixture stack) : BrowserTest(stack)
 {
-    private async Task<IPage> SignedInAsync(string username, Totp? totp = null)
+    private async Task<IPage> SignedInAsync(string username, Totp? totp = null, [CallerMemberName] string test = "")
     {
-        var page = await NewPageAsync();
+        var page = await NewPageAsync(test);
         await page.GotoAsync(StackFixture.BackOffice);
         await KeycloakPages.SignInAsync(page, username, totp);
         return page;
@@ -22,6 +23,7 @@ public sealed class BackOfficeUiTests(StackFixture stack) : BrowserTest(stack)
         var page = await SignedInAsync(admin, new Totp());
         await page.GotoAsync($"{StackFixture.BackOffice}/staff");
         var newUser = $"new.{Guid.NewGuid():N}"[..14];
+        Stack.Admin.DeleteAfterRun(newUser);
 
         await page.GetByTestId("new-username").FillAsync(newUser);
         await page.GetByTestId("new-first").FillAsync("Nadia");

@@ -10,8 +10,9 @@ sequenceDiagram
     participant KC as Keycloak
     U->>BO: Promotions → "Try it anyway"
     BO->>API: POST /promotions (chloe's access token)
-    API->>API: validate JWT, check policy "Marketing"
+    API->>API: validate JWT
     API->>KC: introspect (is the token still active?)
+    API->>API: check policy "Marketing"
     API-->>BO: 403 { policy: "Marketing" }
     BO-->>U: The API refused: 403 Forbidden by policy "Marketing"
 ```

@@ -29,5 +29,5 @@ free name (`outlet-pj-2`, `c-3002`), and cashiers start with a temporary PIN.
 
 ## Tests
 
-- [StaffManagementTests.cs](../../tests/Lantern.IntegrationTests/StaffManagementTests.cs), [CashierManagementTests.cs](../../tests/Lantern.IntegrationTests/CashierManagementTests.cs)
+- [StaffManagementTests.cs](../../tests/Lantern.IntegrationTests/StaffManagementTests.cs), [CashierManagementTests.cs](../../tests/Lantern.IntegrationTests/CashierManagementTests.cs), [TillAccountTests.cs](../../tests/Lantern.IntegrationTests/TillAccountTests.cs)
 - [BackOfficeUiTests.cs](../../tests/Lantern.BrowserTests/BackOfficeUiTests.cs)

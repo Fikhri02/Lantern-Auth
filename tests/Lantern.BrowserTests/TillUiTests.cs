@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Microsoft.Playwright;
 using static Microsoft.Playwright.Assertions;
 
@@ -7,10 +8,10 @@ namespace Lantern.BrowserTests;
 public sealed class TillUiTests(StackFixture stack) : BrowserTest(stack)
 {
     /// <summary>A brand-new till account in Bangsar, signed in on a fresh browser: the till's one-time setup.</summary>
-    private async Task<(IPage Page, string Account, string AccountId)> RegisteredTillAsync()
+    private async Task<(IPage Page, string Account, string AccountId)> RegisteredTillAsync([CallerMemberName] string test = "")
     {
         var (id, account) = await Stack.Admin.CreateUserAsync("/Outlets/Bangsar", "outlet-device");
-        var page = await NewPageAsync();
+        var page = await NewPageAsync(test);
         await page.GotoAsync(StackFixture.Till);
         await page.GetByTestId("register-link").ClickAsync();
         await KeycloakPages.SignInAsync(page, account);

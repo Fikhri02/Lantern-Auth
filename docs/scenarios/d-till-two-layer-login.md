@@ -27,8 +27,9 @@ sequenceDiagram
 ## Try it
 
 1. Open http://localhost:5400 → **Sign in this till** as `outlet-bangsar-2` / `Lantern!2026`.
-2. Enter `c-1001` / `1111`, add two coffees, **Charge**.
-3. Try `c-3001` / `5555` at a PJ till: the PIN is temporary, so you're asked for a new one.
+2. Enter `c-1001` / `1111`, tap **House Blend 1kg** twice, **Charge**.
+3. For a temporary PIN, press **Sign out this till**, sign it in again as the PJ till `outlet-pj-1`, then enter
+   `c-3001` / `5555`: you're asked to choose a new PIN.
 
 ## How it works
 
@@ -41,4 +42,5 @@ PIN pad.
 ## Tests
 
 - [CashierPinFlowTests.cs](../../tests/Lantern.IntegrationTests/CashierPinFlowTests.cs), [OfflineOutletLoginTests.cs](../../tests/Lantern.IntegrationTests/OfflineOutletLoginTests.cs), [TillSessionTests.cs](../../tests/Lantern.IntegrationTests/TillSessionTests.cs), [TillSaleTests.cs](../../tests/Lantern.IntegrationTests/TillSaleTests.cs)
+- [TillRegistrationTests.cs](../../tests/Lantern.IntegrationTests/TillRegistrationTests.cs): the outlet login survives restarting the till
 - [TillUiTests.cs](../../tests/Lantern.BrowserTests/TillUiTests.cs): the whole thing in a browser

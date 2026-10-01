@@ -17,7 +17,7 @@ sequenceDiagram
 
 ## Try it
 
-Sign in anywhere as `aisha.admin`: Keycloak asks her to scan a QR code with an authenticator app. `chloe.staff`
+Sign in to Back Office or Outlet Admin as `aisha.admin`: Keycloak asks her to scan a QR code with an authenticator app. `chloe.staff`
 is never asked.
 
 ## How it works

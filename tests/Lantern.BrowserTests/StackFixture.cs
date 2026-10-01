@@ -58,6 +58,13 @@ public sealed class StackFixture : IAsyncLifetime
     {
         if (Browser is not null) await Browser.DisposeAsync();
         _playwright?.Dispose();
-        Admin.Dispose();
+        try
+        {
+            await Admin.DeleteCreatedUsersAsync();
+        }
+        finally
+        {
+            Admin.Dispose();
+        }
     }
 }
