@@ -22,32 +22,107 @@
   },
   "roles": {
     "realm": [
-      { "name": "hq-admin", "description": "Manages staff; reads everything; MFA required" },
-      { "name": "hq-staff", "description": "Base HQ role: dashboard and read-only reports" },
-      { "name": "marketing", "description": "Creates and schedules promotions" },
-      { "name": "procurement", "description": "Raises purchase orders, reads stock and suppliers" },
-      { "name": "finance", "description": "Reads sales reports, approves purchase orders" },
-      { "name": "outlet-manager", "description": "Manages one outlet in Outlet Admin" },
-      { "name": "outlet-device", "description": "Identifies one till of an outlet" },
-      { "name": "cashier", "description": "Rings sales at a till; PIN only" }
+      {
+        "name": "hq-admin",
+        "description": "Manages staff; reads everything; MFA required"
+      },
+      {
+        "name": "hq-staff",
+        "description": "Base HQ role: dashboard and read-only reports"
+      },
+      {
+        "name": "marketing",
+        "description": "Creates and schedules promotions"
+      },
+      {
+        "name": "procurement",
+        "description": "Raises purchase orders, reads stock and suppliers"
+      },
+      {
+        "name": "finance",
+        "description": "Reads sales reports, approves purchase orders"
+      },
+      {
+        "name": "outlet-manager",
+        "description": "Manages one outlet in Outlet Admin"
+      },
+      {
+        "name": "outlet-device",
+        "description": "Identifies one till of an outlet",
+        "composite": true,
+        "composites": {
+          "realm": [
+            "offline_access"
+          ]
+        }
+      },
+      {
+        "name": "cashier",
+        "description": "Rings sales at a till; PIN only"
+      }
     ]
   },
   "groups": [
     {
       "name": "HQ",
       "subGroups": [
-        { "name": "Admin", "realmRoles": ["hq-admin", "hq-staff"] },
-        { "name": "Marketing", "realmRoles": ["hq-staff", "marketing"] },
-        { "name": "Procurement", "realmRoles": ["hq-staff", "procurement"] },
-        { "name": "Finance", "realmRoles": ["hq-staff", "finance"] }
+        {
+          "name": "Admin",
+          "realmRoles": [
+            "hq-admin",
+            "hq-staff"
+          ]
+        },
+        {
+          "name": "Marketing",
+          "realmRoles": [
+            "hq-staff",
+            "marketing"
+          ]
+        },
+        {
+          "name": "Procurement",
+          "realmRoles": [
+            "hq-staff",
+            "procurement"
+          ]
+        },
+        {
+          "name": "Finance",
+          "realmRoles": [
+            "hq-staff",
+            "finance"
+          ]
+        }
       ]
     },
     {
       "name": "Outlets",
       "subGroups": [
-        { "name": "Bangsar", "attributes": { "outlet_id": ["BGS"] } },
-        { "name": "KLCC", "attributes": { "outlet_id": ["KLC"] } },
-        { "name": "PJ", "attributes": { "outlet_id": ["PJY"] } }
+        {
+          "name": "Bangsar",
+          "attributes": {
+            "outlet_id": [
+              "BGS"
+            ]
+          }
+        },
+        {
+          "name": "KLCC",
+          "attributes": {
+            "outlet_id": [
+              "KLC"
+            ]
+          }
+        },
+        {
+          "name": "PJ",
+          "attributes": {
+            "outlet_id": [
+              "PJY"
+            ]
+          }
+        }
       ]
     }
   ],
@@ -60,19 +135,54 @@
       "secret": "backoffice-dev-secret",
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": false,
-      "redirectUris": ["http://localhost:5200/*"],
-      "webOrigins": ["http://localhost:5200"],
+      "redirectUris": [
+        "http://localhost:5200/*"
+      ],
+      "webOrigins": [
+        "http://localhost:5200"
+      ],
       "attributes": {
         "pkce.code.challenge.method": "S256",
         "post.logout.redirect.uris": "http://localhost:5200/*"
       },
       "protocolMappers": [
-        { "name": "aud-lantern-api", "protocol": "openid-connect", "protocolMapper": "oidc-audience-mapper",
-          "config": { "included.client.audience": "lantern-api", "access.token.claim": "true", "id.token.claim": "false", "introspection.token.claim": "true" } },
-        { "name": "roles", "protocol": "openid-connect", "protocolMapper": "oidc-usermodel-realm-role-mapper",
-          "config": { "claim.name": "roles", "multivalued": "true", "jsonType.label": "String", "access.token.claim": "true", "id.token.claim": "true", "userinfo.token.claim": "true", "introspection.token.claim": "true" } },
-        { "name": "outlet_id", "protocol": "openid-connect", "protocolMapper": "lantern-outlet-id-mapper",
-          "config": { "claim.name": "outlet_id", "jsonType.label": "String", "access.token.claim": "true", "id.token.claim": "true", "userinfo.token.claim": "true" } }
+        {
+          "name": "aud-lantern-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.client.audience": "lantern-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        },
+        {
+          "name": "roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": {
+            "claim.name": "roles",
+            "multivalued": "true",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        },
+        {
+          "name": "outlet_id",
+          "protocol": "openid-connect",
+          "protocolMapper": "lantern-outlet-id-mapper",
+          "config": {
+            "claim.name": "outlet_id",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
       ]
     },
     {
@@ -83,19 +193,54 @@
       "secret": "outlet-admin-dev-secret",
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": false,
-      "redirectUris": ["http://localhost:5300/*"],
-      "webOrigins": ["http://localhost:5300"],
+      "redirectUris": [
+        "http://localhost:5300/*"
+      ],
+      "webOrigins": [
+        "http://localhost:5300"
+      ],
       "attributes": {
         "pkce.code.challenge.method": "S256",
         "post.logout.redirect.uris": "http://localhost:5300/*"
       },
       "protocolMappers": [
-        { "name": "aud-lantern-api", "protocol": "openid-connect", "protocolMapper": "oidc-audience-mapper",
-          "config": { "included.client.audience": "lantern-api", "access.token.claim": "true", "id.token.claim": "false", "introspection.token.claim": "true" } },
-        { "name": "roles", "protocol": "openid-connect", "protocolMapper": "oidc-usermodel-realm-role-mapper",
-          "config": { "claim.name": "roles", "multivalued": "true", "jsonType.label": "String", "access.token.claim": "true", "id.token.claim": "true", "userinfo.token.claim": "true", "introspection.token.claim": "true" } },
-        { "name": "outlet_id", "protocol": "openid-connect", "protocolMapper": "lantern-outlet-id-mapper",
-          "config": { "claim.name": "outlet_id", "jsonType.label": "String", "access.token.claim": "true", "id.token.claim": "true", "userinfo.token.claim": "true" } }
+        {
+          "name": "aud-lantern-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.client.audience": "lantern-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        },
+        {
+          "name": "roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": {
+            "claim.name": "roles",
+            "multivalued": "true",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        },
+        {
+          "name": "outlet_id",
+          "protocol": "openid-connect",
+          "protocolMapper": "lantern-outlet-id-mapper",
+          "config": {
+            "claim.name": "outlet_id",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
       ]
     },
     {
@@ -106,19 +251,54 @@
       "secret": "till-dev-secret",
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": false,
-      "redirectUris": ["http://localhost:5400/*"],
-      "webOrigins": ["http://localhost:5400"],
+      "redirectUris": [
+        "http://localhost:5400/*"
+      ],
+      "webOrigins": [
+        "http://localhost:5400"
+      ],
       "attributes": {
         "pkce.code.challenge.method": "S256",
         "post.logout.redirect.uris": "http://localhost:5400/*"
       },
       "protocolMappers": [
-        { "name": "aud-lantern-api", "protocol": "openid-connect", "protocolMapper": "oidc-audience-mapper",
-          "config": { "included.client.audience": "lantern-api", "access.token.claim": "true", "id.token.claim": "false", "introspection.token.claim": "true" } },
-        { "name": "roles", "protocol": "openid-connect", "protocolMapper": "oidc-usermodel-realm-role-mapper",
-          "config": { "claim.name": "roles", "multivalued": "true", "jsonType.label": "String", "access.token.claim": "true", "id.token.claim": "true", "userinfo.token.claim": "true", "introspection.token.claim": "true" } },
-        { "name": "outlet_id", "protocol": "openid-connect", "protocolMapper": "lantern-outlet-id-mapper",
-          "config": { "claim.name": "outlet_id", "jsonType.label": "String", "access.token.claim": "true", "id.token.claim": "true", "userinfo.token.claim": "true" } }
+        {
+          "name": "aud-lantern-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.client.audience": "lantern-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        },
+        {
+          "name": "roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": {
+            "claim.name": "roles",
+            "multivalued": "true",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        },
+        {
+          "name": "outlet_id",
+          "protocol": "openid-connect",
+          "protocolMapper": "lantern-outlet-id-mapper",
+          "config": {
+            "claim.name": "outlet_id",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
       ]
     },
     {
@@ -145,51 +325,384 @@
     }
   ],
   "users": [
-    { "username": "service-account-api-admin-svc", "enabled": true, "serviceAccountClientId": "api-admin-svc",
-      "clientRoles": { "realm-management": ["manage-users", "view-users", "query-groups", "query-users"] } },
-
-    { "username": "aisha.admin", "enabled": true, "email": "aisha.admin@lantern.test", "emailVerified": true, "firstName": "Aisha", "lastName": "Rahman",
-      "credentials": [{ "type": "password", "value": "Lantern!2026", "temporary": false }], "groups": ["/HQ/Admin"] },
-    { "username": "ben.admin", "enabled": true, "email": "ben.admin@lantern.test", "emailVerified": true, "firstName": "Ben", "lastName": "Lim",
-      "credentials": [{ "type": "password", "value": "Lantern!2026", "temporary": false }], "groups": ["/HQ/Admin"] },
-    { "username": "chloe.staff", "enabled": true, "email": "chloe.staff@lantern.test", "emailVerified": true, "firstName": "Chloe", "lastName": "Wong",
-      "credentials": [{ "type": "password", "value": "Lantern!2026", "temporary": false }], "groups": ["/HQ"], "realmRoles": ["hq-staff"] },
-    { "username": "dina.marketing", "enabled": true, "email": "dina.marketing@lantern.test", "emailVerified": true, "firstName": "Dina", "lastName": "Kaur",
-      "credentials": [{ "type": "password", "value": "Lantern!2026", "temporary": false }], "groups": ["/HQ/Marketing"] },
-    { "username": "eric.procure", "enabled": true, "email": "eric.procure@lantern.test", "emailVerified": true, "firstName": "Eric", "lastName": "Tan",
-      "credentials": [{ "type": "password", "value": "Lantern!2026", "temporary": false }], "groups": ["/HQ/Procurement"] },
-    { "username": "farah.finance", "enabled": true, "email": "farah.finance@lantern.test", "emailVerified": true, "firstName": "Farah", "lastName": "Ismail",
-      "credentials": [{ "type": "password", "value": "Lantern!2026", "temporary": false }], "groups": ["/HQ/Finance"] },
-    { "username": "gary.multi", "enabled": true, "email": "gary.multi@lantern.test", "emailVerified": true, "firstName": "Gary", "lastName": "Ng",
-      "credentials": [{ "type": "password", "value": "Lantern!2026", "temporary": false }], "groups": ["/HQ/Marketing", "/HQ/Procurement"] },
-    { "username": "hana.dual", "enabled": true, "email": "hana.dual@lantern.test", "emailVerified": true, "firstName": "Hana", "lastName": "Yusof",
-      "credentials": [{ "type": "password", "value": "Lantern!2026", "temporary": false }], "groups": ["/HQ/Procurement", "/HQ/Finance"] },
-
-    { "username": "mgr.bangsar", "enabled": true, "email": "mgr.bangsar@lantern.test", "emailVerified": true, "firstName": "Bangsar", "lastName": "Manager",
-      "credentials": [{ "type": "password", "value": "Lantern!2026", "temporary": false }], "groups": ["/Outlets/Bangsar"], "realmRoles": ["outlet-manager"] },
-    { "username": "mgr.klcc", "enabled": true, "email": "mgr.klcc@lantern.test", "emailVerified": true, "firstName": "KLCC", "lastName": "Manager",
-      "credentials": [{ "type": "password", "value": "Lantern!2026", "temporary": false }], "groups": ["/Outlets/KLCC"], "realmRoles": ["outlet-manager"] },
-    { "username": "mgr.pj", "enabled": true, "email": "mgr.pj@lantern.test", "emailVerified": true, "firstName": "PJ", "lastName": "Manager",
-      "credentials": [{ "type": "password", "value": "Lantern!2026", "temporary": false }], "groups": ["/Outlets/PJ"], "realmRoles": ["outlet-manager"] },
-
-    { "username": "outlet-bangsar-1", "enabled": true, "email": "outlet-bangsar-1@lantern.test", "emailVerified": true, "firstName": "Bangsar", "lastName": "Till 1",
-      "credentials": [{ "type": "password", "value": "Lantern!2026", "temporary": false }], "groups": ["/Outlets/Bangsar"], "realmRoles": ["outlet-device"] },
-    { "username": "outlet-bangsar-2", "enabled": true, "email": "outlet-bangsar-2@lantern.test", "emailVerified": true, "firstName": "Bangsar", "lastName": "Till 2",
-      "credentials": [{ "type": "password", "value": "Lantern!2026", "temporary": false }], "groups": ["/Outlets/Bangsar"], "realmRoles": ["outlet-device"] },
-    { "username": "outlet-klcc-1", "enabled": true, "email": "outlet-klcc-1@lantern.test", "emailVerified": true, "firstName": "KLCC", "lastName": "Till 1",
-      "credentials": [{ "type": "password", "value": "Lantern!2026", "temporary": false }], "groups": ["/Outlets/KLCC"], "realmRoles": ["outlet-device"] },
-    { "username": "outlet-pj-1", "enabled": true, "email": "outlet-pj-1@lantern.test", "emailVerified": true, "firstName": "PJ", "lastName": "Till 1",
-      "credentials": [{ "type": "password", "value": "Lantern!2026", "temporary": false }], "groups": ["/Outlets/PJ"], "realmRoles": ["outlet-device"] },
-
-    { "username": "c-1001", "enabled": true, "email": "c-1001@lantern.test", "emailVerified": true, "firstName": "Siti", "lastName": "Aminah",
-      "groups": ["/Outlets/Bangsar"], "realmRoles": ["cashier"] },
-    { "username": "c-1002", "enabled": true, "email": "c-1002@lantern.test", "emailVerified": true, "firstName": "Raj", "lastName": "Kumar",
-      "groups": ["/Outlets/Bangsar"], "realmRoles": ["cashier"] },
-    { "username": "c-2001", "enabled": true, "email": "c-2001@lantern.test", "emailVerified": true, "firstName": "Mei Ling", "lastName": "Chan",
-      "groups": ["/Outlets/KLCC"], "realmRoles": ["cashier"] },
-    { "username": "c-2002", "enabled": true, "email": "c-2002@lantern.test", "emailVerified": true, "firstName": "Daniel", "lastName": "Lee",
-      "groups": ["/Outlets/KLCC"], "realmRoles": ["cashier"] },
-    { "username": "c-3001", "enabled": true, "email": "c-3001@lantern.test", "emailVerified": true, "firstName": "Nurul", "lastName": "Huda",
-      "groups": ["/Outlets/PJ"], "realmRoles": ["cashier"] }
+    {
+      "username": "service-account-api-admin-svc",
+      "enabled": true,
+      "serviceAccountClientId": "api-admin-svc",
+      "clientRoles": {
+        "realm-management": [
+          "manage-users",
+          "view-users",
+          "query-groups",
+          "query-users"
+        ]
+      }
+    },
+    {
+      "username": "aisha.admin",
+      "enabled": true,
+      "email": "aisha.admin@lantern.test",
+      "emailVerified": true,
+      "firstName": "Aisha",
+      "lastName": "Rahman",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Lantern!2026",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "/HQ/Admin"
+      ]
+    },
+    {
+      "username": "ben.admin",
+      "enabled": true,
+      "email": "ben.admin@lantern.test",
+      "emailVerified": true,
+      "firstName": "Ben",
+      "lastName": "Lim",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Lantern!2026",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "/HQ/Admin"
+      ]
+    },
+    {
+      "username": "chloe.staff",
+      "enabled": true,
+      "email": "chloe.staff@lantern.test",
+      "emailVerified": true,
+      "firstName": "Chloe",
+      "lastName": "Wong",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Lantern!2026",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "/HQ"
+      ],
+      "realmRoles": [
+        "hq-staff"
+      ]
+    },
+    {
+      "username": "dina.marketing",
+      "enabled": true,
+      "email": "dina.marketing@lantern.test",
+      "emailVerified": true,
+      "firstName": "Dina",
+      "lastName": "Kaur",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Lantern!2026",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "/HQ/Marketing"
+      ]
+    },
+    {
+      "username": "eric.procure",
+      "enabled": true,
+      "email": "eric.procure@lantern.test",
+      "emailVerified": true,
+      "firstName": "Eric",
+      "lastName": "Tan",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Lantern!2026",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "/HQ/Procurement"
+      ]
+    },
+    {
+      "username": "farah.finance",
+      "enabled": true,
+      "email": "farah.finance@lantern.test",
+      "emailVerified": true,
+      "firstName": "Farah",
+      "lastName": "Ismail",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Lantern!2026",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "/HQ/Finance"
+      ]
+    },
+    {
+      "username": "gary.multi",
+      "enabled": true,
+      "email": "gary.multi@lantern.test",
+      "emailVerified": true,
+      "firstName": "Gary",
+      "lastName": "Ng",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Lantern!2026",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "/HQ/Marketing",
+        "/HQ/Procurement"
+      ]
+    },
+    {
+      "username": "hana.dual",
+      "enabled": true,
+      "email": "hana.dual@lantern.test",
+      "emailVerified": true,
+      "firstName": "Hana",
+      "lastName": "Yusof",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Lantern!2026",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "/HQ/Procurement",
+        "/HQ/Finance"
+      ]
+    },
+    {
+      "username": "mgr.bangsar",
+      "enabled": true,
+      "email": "mgr.bangsar@lantern.test",
+      "emailVerified": true,
+      "firstName": "Bangsar",
+      "lastName": "Manager",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Lantern!2026",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "/Outlets/Bangsar"
+      ],
+      "realmRoles": [
+        "outlet-manager"
+      ]
+    },
+    {
+      "username": "mgr.klcc",
+      "enabled": true,
+      "email": "mgr.klcc@lantern.test",
+      "emailVerified": true,
+      "firstName": "KLCC",
+      "lastName": "Manager",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Lantern!2026",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "/Outlets/KLCC"
+      ],
+      "realmRoles": [
+        "outlet-manager"
+      ]
+    },
+    {
+      "username": "mgr.pj",
+      "enabled": true,
+      "email": "mgr.pj@lantern.test",
+      "emailVerified": true,
+      "firstName": "PJ",
+      "lastName": "Manager",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Lantern!2026",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "/Outlets/PJ"
+      ],
+      "realmRoles": [
+        "outlet-manager"
+      ]
+    },
+    {
+      "username": "outlet-bangsar-1",
+      "enabled": true,
+      "email": "outlet-bangsar-1@lantern.test",
+      "emailVerified": true,
+      "firstName": "Bangsar",
+      "lastName": "Till 1",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Lantern!2026",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "/Outlets/Bangsar"
+      ],
+      "realmRoles": [
+        "outlet-device"
+      ]
+    },
+    {
+      "username": "outlet-bangsar-2",
+      "enabled": true,
+      "email": "outlet-bangsar-2@lantern.test",
+      "emailVerified": true,
+      "firstName": "Bangsar",
+      "lastName": "Till 2",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Lantern!2026",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "/Outlets/Bangsar"
+      ],
+      "realmRoles": [
+        "outlet-device"
+      ]
+    },
+    {
+      "username": "outlet-klcc-1",
+      "enabled": true,
+      "email": "outlet-klcc-1@lantern.test",
+      "emailVerified": true,
+      "firstName": "KLCC",
+      "lastName": "Till 1",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Lantern!2026",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "/Outlets/KLCC"
+      ],
+      "realmRoles": [
+        "outlet-device"
+      ]
+    },
+    {
+      "username": "outlet-pj-1",
+      "enabled": true,
+      "email": "outlet-pj-1@lantern.test",
+      "emailVerified": true,
+      "firstName": "PJ",
+      "lastName": "Till 1",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Lantern!2026",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "/Outlets/PJ"
+      ],
+      "realmRoles": [
+        "outlet-device"
+      ]
+    },
+    {
+      "username": "c-1001",
+      "enabled": true,
+      "email": "c-1001@lantern.test",
+      "emailVerified": true,
+      "firstName": "Siti",
+      "lastName": "Aminah",
+      "groups": [
+        "/Outlets/Bangsar"
+      ],
+      "realmRoles": [
+        "cashier"
+      ]
+    },
+    {
+      "username": "c-1002",
+      "enabled": true,
+      "email": "c-1002@lantern.test",
+      "emailVerified": true,
+      "firstName": "Raj",
+      "lastName": "Kumar",
+      "groups": [
+        "/Outlets/Bangsar"
+      ],
+      "realmRoles": [
+        "cashier"
+      ]
+    },
+    {
+      "username": "c-2001",
+      "enabled": true,
+      "email": "c-2001@lantern.test",
+      "emailVerified": true,
+      "firstName": "Mei Ling",
+      "lastName": "Chan",
+      "groups": [
+        "/Outlets/KLCC"
+      ],
+      "realmRoles": [
+        "cashier"
+      ]
+    },
+    {
+      "username": "c-2002",
+      "enabled": true,
+      "email": "c-2002@lantern.test",
+      "emailVerified": true,
+      "firstName": "Daniel",
+      "lastName": "Lee",
+      "groups": [
+        "/Outlets/KLCC"
+      ],
+      "realmRoles": [
+        "cashier"
+      ]
+    },
+    {
+      "username": "c-3001",
+      "enabled": true,
+      "email": "c-3001@lantern.test",
+      "emailVerified": true,
+      "firstName": "Nurul",
+      "lastName": "Huda",
+      "groups": [
+        "/Outlets/PJ"
+      ],
+      "realmRoles": [
+        "cashier"
+      ]
+    }
   ]
 }

@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
@@ -214,6 +215,54 @@ public sealed class KeycloakFixture : IAsyncLifetime
     {
         using var admin = await AdminClientAsync();
         using var response = await admin.PostAsync($"users/{id}/logout", null);
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task<(string Id, string Username)> CreateTempTillAsync(string outletGroupPath)
+    {
+        var (id, username, _) = await CreateTempUserAsync(outletGroupPath);
+        using var admin = await AdminClientAsync();
+        var role = await admin.GetFromJsonAsync<JsonObject>("roles/outlet-device");
+        using var map = await admin.PostAsJsonAsync($"users/{id}/role-mappings/realm", new[] { role });
+        map.EnsureSuccessStatusCode();
+        return (id, username);
+    }
+
+    /// <summary>Signs a till in as an outlet account; like the till, then ends the online session.</summary>
+    public async Task<TokenSet> OutletLoginAsync(string username, string password = DemoPassword, bool endOnlineSession = true)
+    {
+        using var browser = new OidcBrowser(Issuer);
+        var outcome = await browser.LoginAsync(username, password);
+        if (!outcome.Succeeded)
+            throw new InvalidOperationException($"Outlet login for {username} refused ({outcome.Status}): {OidcBrowser.Snippet(outcome.Html!)}");
+        if (endOnlineSession) await browser.EndOnlineSessionAsync(outcome.Tokens!.IdToken);
+        return outcome.Tokens!;
+    }
+
+    public async Task<(HttpStatusCode Status, JsonNode Body)> RefreshTillTokenAsync(string refreshToken)
+    {
+        using var response = await Http.PostAsync($"{Issuer}/protocol/openid-connect/token", new FormUrlEncodedContent(
+            new Dictionary<string, string>
+            {
+                ["grant_type"] = "refresh_token",
+                ["refresh_token"] = refreshToken,
+                ["client_id"] = OidcBrowser.TillClientId,
+                ["client_secret"] = OidcBrowser.TillClientSecret
+            }));
+        return (response.StatusCode, JsonNode.Parse(await response.Content.ReadAsStringAsync())!);
+    }
+
+    public async Task<string> GetTillClientUuidAsync()
+    {
+        using var admin = await AdminClientAsync();
+        var clients = await admin.GetFromJsonAsync<JsonElement>("clients?clientId=till");
+        return clients.EnumerateArray().Single().GetProperty("id").GetString()!;
+    }
+
+    public async Task RevokeTillLoginAsync(string userId)
+    {
+        using var admin = await AdminClientAsync();
+        using var response = await admin.DeleteAsync($"users/{userId}/consents/till");
         response.EnsureSuccessStatusCode();
     }
 
