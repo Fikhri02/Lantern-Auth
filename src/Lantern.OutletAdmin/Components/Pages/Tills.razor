@@ -26,7 +26,7 @@
                     <td>@s.StartedAt.ToLocalTime().ToString("d MMM HH:mm")</td>
                     <td>@s.LastUsedAt.ToLocalTime().ToString("d MMM HH:mm")</td>
                     <td>@s.IpAddress</td>
-                    <td><button @onclick="() => ReleaseAsync(till)" data-testid="release-@till.Username">Release</button></td>
+                    <td><button disabled="@(!RendererInfo.IsInteractive)" @onclick="() => ReleaseAsync(till)" data-testid="release-@till.Username">Release</button></td>
                 }
                 else
                 {

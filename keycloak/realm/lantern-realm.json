@@ -862,7 +862,7 @@
           "authenticatorConfig": "till-require-outlet-device"
         },
         {
-          "authenticator": "deny-access-authenticator",
+          "authenticator": "lantern-deny-access",
           "requirement": "REQUIRED",
           "priority": 20,
           "authenticatorFlow": false,
@@ -981,7 +981,7 @@
           "authenticatorConfig": "hq-without-hq-staff"
         },
         {
-          "authenticator": "deny-access-authenticator",
+          "authenticator": "lantern-deny-access",
           "requirement": "REQUIRED",
           "priority": 20,
           "authenticatorFlow": false,
@@ -1108,7 +1108,7 @@
           "authenticatorConfig": "outlet-without-admin"
         },
         {
-          "authenticator": "deny-access-authenticator",
+          "authenticator": "lantern-deny-access",
           "requirement": "REQUIRED",
           "priority": 20,
           "authenticatorFlow": false,

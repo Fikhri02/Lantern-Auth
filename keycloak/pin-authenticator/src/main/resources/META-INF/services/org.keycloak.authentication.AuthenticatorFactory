@@ -2,3 +2,4 @@ dev.lantern.keycloak.OutletSessionCheckAuthenticator
 dev.lantern.keycloak.CashierCheckAuthenticator
 dev.lantern.keycloak.PinCheckAuthenticator
 dev.lantern.keycloak.TillAccountLimitAuthenticator
+dev.lantern.keycloak.DenyAccessAuthenticator

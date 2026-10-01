@@ -103,6 +103,23 @@ public sealed class SsoAndAccessTests(KeycloakFixture kc) : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Being_refused_by_the_wrong_app_does_not_lock_the_account()
+    {
+        var (_, staff, _) = await kc.CreateTempUserAsync("/HQ/Marketing");
+        for (var i = 0; i < 5; i++) // the realm's failureFactor
+        {
+            using var wrongApp = NewBrowser();
+            var refused = await wrongApp.SignInAsync(AppBrowser.OutletAdminOrigin + "/", staff);
+            Assert.Contains("Your account doesn't have access to Outlet Admin.", WebUtility.HtmlDecode(refused.Html));
+        }
+
+        using var browser = NewBrowser();
+        var page = await browser.SignInAsync(AppBrowser.BackOfficeOrigin + "/", staff);
+
+        Assert.Equal(AppBrowser.BackOfficeOrigin, page.Url.GetLeftPart(UriPartial.Authority));
+    }
+
+    [Fact]
     public async Task Single_sign_on_from_outlet_admin_does_not_skip_back_offices_role_check()
     {
         using var browser = NewBrowser();
