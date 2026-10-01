@@ -202,6 +202,18 @@ public sealed class KeycloakFixture : IAsyncLifetime
         return users.EnumerateArray().Single().GetProperty("id").GetString()!;
     }
 
+    /// <summary>A user with no groups, roles or credentials, e.g. to simulate a half-created account.</summary>
+    public async Task<string> CreateBareUserAsync(string username)
+    {
+        using var admin = await AdminClientAsync();
+        using var create = await admin.PostAsJsonAsync("users", new
+        {
+            username, enabled = true, email = $"{username}@lantern.test", emailVerified = true, firstName = "Bare", lastName = "User"
+        });
+        create.EnsureSuccessStatusCode();
+        return create.Headers.Location!.Segments.Last();
+    }
+
     public async Task SetUserEnabledAsync(string id, bool enabled)
     {
         using var admin = await AdminClientAsync();

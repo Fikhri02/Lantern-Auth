@@ -62,6 +62,18 @@ public sealed class CashierManagementTests(KeycloakFixture kc)
     }
 
     [Fact]
+    public async Task A_half_created_account_holding_the_next_code_is_skipped()
+    {
+        var first = (await CreateCashierAsync("PJY")).GetProperty("code").GetString()!;
+        var orphan = $"c-3{int.Parse(first[3..]) + 1:000}";
+        await kc.CreateBareUserAsync(orphan);
+
+        var next = (await CreateCashierAsync("PJY")).GetProperty("code").GetString()!;
+
+        Assert.Equal($"c-3{int.Parse(first[3..]) + 2:000}", next);
+    }
+
+    [Fact]
     public async Task Manager_cannot_create_cashiers()
     {
         var response = await (await kc.Api.ClientAsAsync("mgr.bangsar")).PostAsJsonAsync("/cashiers",

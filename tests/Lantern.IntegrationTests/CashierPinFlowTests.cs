@@ -52,6 +52,40 @@ public sealed class CashierPinFlowTests(KeycloakFixture kc)
     }
 
     [Fact]
+    public async Task Correct_pin_resets_the_failure_count()
+    {
+        var till = await kc.OpenTillAsync("/Outlets/Bangsar");
+        var (_, cashier) = await kc.CreateTempCashierAsync("/Outlets/Bangsar", "2468");
+        for (var i = 0; i < 4; i++) await kc.CashierPinAsync(till.AccessToken, cashier, "0000");
+
+        Assert.Equal(HttpStatusCode.OK, (await kc.CashierPinAsync(till.AccessToken, cashier, "2468")).Status);
+        var (_, body) = await kc.CashierPinAsync(till.AccessToken, cashier, "0000");
+
+        Assert.Equal("pin_invalid:4", KeycloakFixture.ErrorCode(body));
+    }
+
+    [Fact]
+    public async Task Wrong_passwords_on_other_login_pages_do_not_lock_the_cashiers_pin()
+    {
+        var till = await kc.OpenTillAsync("/Outlets/Bangsar");
+        var (_, cashier) = await kc.CreateTempCashierAsync("/Outlets/Bangsar", "2468");
+        for (var i = 0; i < 6; i++)
+        {
+            using var attempt = await kc.Http.PostAsync($"{kc.Issuer}/protocol/openid-connect/token", new FormUrlEncodedContent(
+                new Dictionary<string, string>
+                {
+                    ["grant_type"] = "password", ["client_id"] = "admin-cli", ["username"] = cashier, ["password"] = "guess" + i
+                }));
+        }
+        await Task.Delay(1000); // Keycloak counts password failures asynchronously
+
+        var (status, body) = await kc.CashierPinAsync(till.AccessToken, cashier, "2468");
+
+        Assert.Equal(HttpStatusCode.OK, status);
+        Assert.Null(KeycloakFixture.ErrorCode(body));
+    }
+
+    [Fact]
     public async Task Empty_pin_is_missing_and_not_counted()
     {
         var till = await kc.OpenTillAsync("/Outlets/Bangsar");

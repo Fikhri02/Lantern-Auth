@@ -84,6 +84,20 @@ public sealed class TillAccountTests(KeycloakFixture kc)
     }
 
     [Fact]
+    public async Task A_half_created_account_holding_the_next_till_name_is_skipped()
+    {
+        var admin = await kc.Api.ClientAsAsync("aisha.admin");
+        var first = await (await admin.PostAsJsonAsync("/outlets/KLC/tills", new { password = "Lantern!2026" })).Content.ReadFromJsonAsync<JsonElement>();
+        var n = int.Parse(first.GetProperty("username").GetString()!["outlet-klcc-".Length..]);
+        await kc.CreateBareUserAsync($"outlet-klcc-{n + 1}");
+
+        var response = await admin.PostAsJsonAsync("/outlets/KLC/tills", new { password = "Lantern!2026" });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        Assert.Equal($"outlet-klcc-{n + 2}", (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("username").GetString());
+    }
+
+    [Fact]
     public async Task Short_till_password_is_400()
     {
         var response = await (await kc.Api.ClientAsAsync("aisha.admin")).PostAsJsonAsync("/outlets/PJY/tills", new { password = "short" });

@@ -397,11 +397,13 @@ refresh fails, so the till deletes its registration and returns to the outlet si
 
 ### 6.3 Brute-force protection
 
-The realm enables brute-force detection (5 failures → temporary lock, increasing wait). `pin-check`
-reports failures as `invalid_user_credentials` login errors against the cashier, so Keycloak's
-brute-force protector counts them, and it checks the protector before validating. **Implementation
-risk:** custom direct-grant authenticators must report failures exactly the way the built-in password
-step does, or they won't count. This is verified by an integration test early in the build.
+Wrong PINs have their **own counter** (`PinLockout`, in Keycloak's single-use-object store), separate
+from Keycloak's password lockout. Keycloak's counter is per user and shared by every login page, so
+anyone could otherwise lock a cashier out of the till by typing wrong passwords for their code on
+any Keycloak login page. The PIN counter uses the realm's settings: 5 wrong PINs lock the cashier
+for 15 minutes after the last one, a right PIN clears the count, and an admin PIN reset clears the
+lock. *(Revised during Plan 2: Keycloak's protector only counts the password, OTP and recovery-code
+categories, and a shared counter allowed anonymous lockouts.)*
 
 ### 6.4 Temporary PINs and first-use change
 
@@ -425,8 +427,14 @@ the cashier's Keycloak session and shows the PIN pad. The outlet login is untouc
 Keycloak backs this up: the `till` client's session idle is 15 minutes, and since the outlet login is
 an offline session, only cashier sessions are affected by it. If the till's server restarts, the
 cashier tokens in memory are lost, and the next person enters their PIN. Leftover cashier sessions
-expire on that 15-minute idle, and are unusable meanwhile because they need the client secret and a
-live outlet login.
+expire on that 15-minute idle. Only the till's server can use them, because refreshing them needs
+the client secret.
+
+**Releasing or deactivating a till does not end its cashier sessions in Keycloak.** A cashier refresh
+checks only the client secret, not the outlet login. The Till app therefore has to enforce it: it
+refreshes the outlet login before each sale, and at least every access-token lifetime (5 min). When
+that refresh fails, it drops the current cashier's tokens along with the till registration.
+*(Added during Plan 2's review; a requirement on Plan 3.)*
 
 ### 6.6 The plugin (`keycloak/pin-authenticator`)
 

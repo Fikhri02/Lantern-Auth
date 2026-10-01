@@ -8,23 +8,19 @@ import java.util.Optional;
 import org.keycloak.authentication.AuthenticationFlowContext;
 import org.keycloak.authentication.AuthenticationFlowError;
 import org.keycloak.authentication.authenticators.directgrant.AbstractDirectGrantAuthenticator;
-import org.keycloak.authentication.authenticators.util.AuthenticatorUtils;
 import org.keycloak.events.Errors;
 import org.keycloak.models.AuthenticationExecutionModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
-import org.keycloak.models.UserLoginFailureModel;
 import org.keycloak.models.UserModel;
-import org.keycloak.models.credential.PasswordCredentialModel;
 import org.keycloak.provider.ProviderConfigProperty;
 
 /**
  * Step 3 of till-cashier-pin: checks the PIN, respects brute-force lockout, and replaces a
  * temporary PIN in the same request (spec §6.2–6.4).
  *
- * Wrong PINs call failure() with the user set, so Keycloak's brute-force protector counts them.
- * Everything else (missing PIN, locked, change required, rule broken) uses challenge(), which returns
- * the same JSON error without counting.
+ * Wrong PINs are counted by {@link PinLockout}, not by Keycloak's password lockout, so guessing a
+ * cashier's password elsewhere can't lock their PIN. Errors other than a wrong PIN use challenge().
  */
 public class PinCheckAuthenticator extends AbstractDirectGrantAuthenticator {
 
@@ -41,7 +37,7 @@ public class PinCheckAuthenticator extends AbstractDirectGrantAuthenticator {
             reject(context, TillErrors.PIN_MISSING);
             return;
         }
-        if (AuthenticatorUtils.getDisabledByBruteForceEventError(context, cashier) != null) {
+        if (PinLockout.isLocked(context.getSession(), context.getRealm(), cashier)) {
             context.getEvent().user(cashier).error(Errors.USER_TEMPORARILY_DISABLED);
             reject(context, TillErrors.PIN_LOCKED);
             return;
@@ -49,7 +45,7 @@ public class PinCheckAuthenticator extends AbstractDirectGrantAuthenticator {
 
         switch (PinCredentials.check(context.getSession(), cashier, pin)) {
             case NO_PIN, MISMATCH -> {
-                int failuresSoFar = failuresSoFar(context, cashier);
+                int failuresSoFar = PinLockout.recordFailure(context.getSession(), context.getRealm(), cashier);
                 context.getEvent().user(cashier).error(Errors.INVALID_USER_CREDENTIALS);
                 context.failure(AuthenticationFlowError.INVALID_CREDENTIALS, errorResponse(
                         Response.Status.BAD_REQUEST.getStatusCode(), "invalid_grant",
@@ -66,15 +62,14 @@ public class PinCheckAuthenticator extends AbstractDirectGrantAuthenticator {
                     return;
                 }
                 PinCredentials.set(context.getSession(), cashier, newPin, false);
+                PinLockout.clear(context.getSession(), cashier);
                 context.success();
             }
-            case OK -> context.success();
+            case OK -> {
+                PinLockout.clear(context.getSession(), cashier);
+                context.success();
+            }
         }
-    }
-
-    private static int failuresSoFar(AuthenticationFlowContext context, UserModel user) {
-        UserLoginFailureModel failures = context.getSession().loginFailures().getUserLoginFailure(context.getRealm(), user.getId());
-        return failures == null ? 0 : failures.getNumFailures();
     }
 
     private void reject(AuthenticationFlowContext context, String code) {
@@ -105,13 +100,10 @@ public class PinCheckAuthenticator extends AbstractDirectGrantAuthenticator {
         return "Lantern: PIN check";
     }
 
-    /**
-     * Keycloak's brute-force protector only counts failures in the password, otp and recovery-code
-     * categories; reporting "password" makes wrong PINs count, and a right PIN reset the count.
-     */
+    /** Not a category Keycloak's brute-force protector counts: PIN failures are PinLockout's job. */
     @Override
     public String getReferenceCategory() {
-        return PasswordCredentialModel.TYPE;
+        return PinCredentials.TYPE;
     }
 
     @Override

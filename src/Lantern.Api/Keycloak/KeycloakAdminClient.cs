@@ -149,7 +149,7 @@ public sealed class KeycloakAdminClient(HttpClient http, IOptions<KeycloakOption
     public async Task<UserCreation> CreateTillAccountAsync(Outlet outlet, string password, CancellationToken ct)
     {
         var prefix = $"outlet-{outlet.Slug}-";
-        var next = NextNumber((await GetOutletMembersWithRoleAsync(outlet, Roles.OutletDevice, ct)).Select(u => u.Username), prefix, digits: null);
+        var next = NextNumber(await UsernamesStartingWithAsync(prefix, ct), prefix, digits: null);
         var username = $"{prefix}{next}";
         var creation = await CreateUserAsync(new
         {
@@ -162,7 +162,8 @@ public sealed class KeycloakAdminClient(HttpClient http, IOptions<KeycloakOption
             groups = new[] { outlet.GroupPath },
             credentials = new[] { new { type = "password", value = password, temporary = false } }
         }, username, ct);
-        if (creation.Id is not null) await GrantRealmRoleAsync(creation.Id, Roles.OutletDevice, ct);
+        if (creation.Id is not null)
+            await CompleteOrDeleteAsync(creation.Id, () => GrantRealmRoleAsync(creation.Id, Roles.OutletDevice, ct), ct);
         return creation;
     }
 
@@ -178,7 +179,7 @@ public sealed class KeycloakAdminClient(HttpClient http, IOptions<KeycloakOption
     public async Task<UserCreation> CreateCashierAsync(Outlet outlet, string firstName, string lastName, string temporaryPin, CancellationToken ct)
     {
         var prefix = $"c-{outlet.CashierDigit}";
-        var next = NextNumber((await GetOutletMembersWithRoleAsync(outlet, Roles.Cashier, ct)).Select(u => u.Username), prefix, digits: 3);
+        var next = NextNumber(await UsernamesStartingWithAsync(prefix, ct), prefix, digits: 3);
         var code = $"{prefix}{next:000}";
         var creation = await CreateUserAsync(new
         {
@@ -192,8 +193,11 @@ public sealed class KeycloakAdminClient(HttpClient http, IOptions<KeycloakOption
         }, code, ct);
         if (creation.Id is null) return creation;
 
-        await GrantRealmRoleAsync(creation.Id, Roles.Cashier, ct);
-        await SetPinAsync(creation.Id, temporaryPin, temporary: true, ct);
+        await CompleteOrDeleteAsync(creation.Id, async () =>
+        {
+            await GrantRealmRoleAsync(creation.Id, Roles.Cashier, ct);
+            await SetPinAsync(creation.Id, temporaryPin, temporary: true, ct);
+        }, ct);
         return creation;
     }
 
@@ -202,6 +206,26 @@ public sealed class KeycloakAdminClient(HttpClient http, IOptions<KeycloakOption
     {
         using var response = await SendToUrlAsync(HttpMethod.Put, $"{Kc.RealmUrl}/lantern-pin/users/{userId}", new { pin, temporary }, ct);
         response.EnsureSuccessStatusCode();
+    }
+
+    /// <summary>Every username in the realm with this prefix, whatever its group or roles (a half-created account still holds its name).</summary>
+    private async Task<IEnumerable<string>> UsernamesStartingWithAsync(string prefix, CancellationToken ct) =>
+        (await GetJsonAsync<List<KcUser>>($"users?search={Uri.EscapeDataString(prefix)}&briefRepresentation=true&max=1000", ct))
+        .Select(u => u.Username)
+        .Where(n => n.StartsWith(prefix, StringComparison.Ordinal));
+
+    /// <summary>Runs the steps after creating a user; if any fails, deletes the user so no half-made account is left.</summary>
+    private async Task CompleteOrDeleteAsync(string userId, Func<Task> steps, CancellationToken ct)
+    {
+        try
+        {
+            await steps();
+        }
+        catch
+        {
+            using var cleanup = await SendAsync(HttpMethod.Delete, $"users/{userId}", null, CancellationToken.None);
+            throw;
+        }
     }
 
     /// <summary>Highest existing number after <paramref name="prefix"/> plus one; gaps are never reused.</summary>

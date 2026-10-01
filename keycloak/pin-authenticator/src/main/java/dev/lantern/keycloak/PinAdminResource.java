@@ -48,7 +48,7 @@ public class PinAdminResource {
         if (request == null || !PinRules.isWellFormed(request.pin)) return error(Response.Status.BAD_REQUEST, "pin_rule_format");
 
         PinCredentials.set(session, user, request.pin, request.temporary == null || request.temporary);
-        session.loginFailures().removeUserLoginFailure(realm, user.getId());
+        PinLockout.clear(session, user);
         return Response.noContent().build();
     }
 
