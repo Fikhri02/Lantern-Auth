@@ -1,0 +1,15 @@
+@inherits LayoutComponentBase
+
+<header class="app-bar">
+    <strong>Lantern Back Office</strong>
+    <AuthorizeView>
+        <Authorized>
+            <span class="who" data-testid="signed-in-as">@context.User.FindFirst("name")?.Value (@context.User.Identity?.Name)</span>
+            <a href="/bff/logout?sid=@Uri.EscapeDataString(LanternRoles.Sid(context.User) ?? "")" data-testid="sign-out">Sign out</a>
+        </Authorized>
+    </AuthorizeView>
+</header>
+
+<main class="page">
+    @Body
+</main>
