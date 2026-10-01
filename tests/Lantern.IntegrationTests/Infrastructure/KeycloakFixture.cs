@@ -332,6 +332,13 @@ public sealed class KeycloakFixture : IAsyncLifetime
 
     public static string? ErrorCode(JsonNode body) => (string?)body["error_description"];
 
+    public async Task<string> CashierTokenAsync(OpenTill till, string username, string pin)
+    {
+        var (status, body) = await CashierPinAsync(till.AccessToken, username, pin);
+        if (status != HttpStatusCode.OK) throw new InvalidOperationException($"PIN sign-in for {username} failed: {body}");
+        return (string)body["access_token"]!;
+    }
+
     public async Task<int> WaitForEmailCountAsync(string email, int atLeast, TimeSpan? timeout = null)
     {
         var deadline = DateTime.UtcNow + (timeout ?? TimeSpan.FromSeconds(15));

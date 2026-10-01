@@ -14,6 +14,8 @@ public static class Policies
     public const string FinanceRole = "FinanceRole";
     public const string FinanceApprove = "FinanceApprove";
     public const string OutletManage = "OutletManage";
+    public const string OutletSell = "OutletSell";
+    public const string OutletReceipts = "OutletReceipts";
     public const string StaffAdmin = "StaffAdmin";
 
     public static IServiceCollection AddLanternPolicies(this IServiceCollection services)
@@ -32,7 +34,9 @@ public static class Policies
             .AddPolicy(SalesReports, p => p.RequireRole(Roles.Finance, Roles.HqAdmin))
             .AddPolicy(FinanceRole, p => p.RequireRole(Roles.Finance))
             .AddPolicy(FinanceApprove, p => p.RequireRole(Roles.Finance).AddRequirements(new NotCreatorRequirement()))
-            .AddPolicy(OutletManage, p => p.RequireAuthenticatedUser().AddRequirements(new OutletRequirement(Roles.OutletManager)))
+            .AddPolicy(OutletManage, p => p.RequireAuthenticatedUser().AddRequirements(new OutletRequirement([Roles.OutletManager], HqAdminBypass: true)))
+            .AddPolicy(OutletSell, p => p.RequireAuthenticatedUser().AddRequirements(new OutletRequirement([Roles.Cashier], HqAdminBypass: false)))
+            .AddPolicy(OutletReceipts, p => p.RequireAuthenticatedUser().AddRequirements(new OutletRequirement([Roles.Cashier, Roles.OutletManager], HqAdminBypass: true)))
             .AddPolicy(StaffAdmin, p => p.RequireRole(Roles.HqAdmin));
 
         return services;

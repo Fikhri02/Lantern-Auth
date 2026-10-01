@@ -18,6 +18,7 @@ app.MapHqEndpoints();
 app.MapPurchaseOrderEndpoints();
 app.MapOutletEndpoints();
 app.MapStaffEndpoints();
+app.MapSalesEndpoints();
 
 app.Run();
 

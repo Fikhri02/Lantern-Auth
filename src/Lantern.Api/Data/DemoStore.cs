@@ -7,6 +7,10 @@ public sealed record Supplier(string Id, string Name);
 public sealed record StockLine(string Sku, string Name, int Quantity);
 public sealed record RosterEntry(string Name, string Role);
 public sealed record OutletSales(string OutletId, decimal Total);
+public sealed record CatalogItem(string Name, decimal Price);
+public sealed record ReceiptLine(string Sku, string Name, int Quantity, decimal UnitPrice, decimal Amount);
+public sealed record Receipt(Guid SaleId, string OutletId, string TillAccount, string CashierId, string CashierCode,
+    string CashierName, string ServedBy, IReadOnlyList<ReceiptLine> Lines, decimal Total, DateTimeOffset At);
 public sealed record PurchaseOrder(Guid Id, string SupplierId, decimal Amount, string CreatedBySub,
     string CreatedByName, string Status, string? ApprovedByName);
 
@@ -51,6 +55,35 @@ public sealed class DemoStore
 
     public IReadOnlyList<OutletSales> SalesReport { get; } =
         [new("BGS", 18250.40m), new("KLC", 22410.00m), new("PJY", 9120.75m)];
+
+    public IReadOnlyDictionary<string, CatalogItem> Catalog { get; } =
+        new Dictionary<string, CatalogItem>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["SKU-100"] = new("House Blend 1kg", 45.00m),
+            ["SKU-200"] = new("Oat Milk 1L", 9.50m)
+        };
+
+    private readonly ConcurrentDictionary<Guid, Receipt> _receipts = new();
+
+    public Receipt RecordSale(string outletId, string tillAccount, string cashierId, string cashierCode, string cashierName,
+        IReadOnlyList<(string Sku, int Quantity)> items)
+    {
+        var lines = items.Select(i =>
+        {
+            var item = Catalog[i.Sku];
+            return new ReceiptLine(i.Sku.ToUpperInvariant(), item.Name, i.Quantity, item.Price, item.Price * i.Quantity);
+        }).ToList();
+        var receipt = new Receipt(Guid.NewGuid(), outletId, tillAccount, cashierId, cashierCode, cashierName,
+            $"{cashierName} ({cashierCode})", lines, lines.Sum(l => l.Amount), DateTimeOffset.UtcNow);
+        _receipts[receipt.SaleId] = receipt;
+        return receipt;
+    }
+
+    public Receipt? FindReceipt(string outletId, Guid saleId) =>
+        _receipts.TryGetValue(saleId, out var receipt) &&
+        string.Equals(receipt.OutletId, outletId, StringComparison.OrdinalIgnoreCase)
+            ? receipt
+            : null;
 
     private readonly ConcurrentDictionary<Guid, PurchaseOrder> _orders = new();
 
