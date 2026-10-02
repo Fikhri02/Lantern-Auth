@@ -1,6 +1,6 @@
 # Lantern Auth
 
-[![CI](https://github.com/irfanfikhri/lantern-auth/actions/workflows/ci.yml/badge.svg)](https://github.com/irfanfikhri/lantern-auth/actions/workflows/ci.yml)
+[![CI](https://github.com/Fikhri02/lantern-auth/actions/workflows/ci.yml/badge.svg)](https://github.com/Fikhri02/lantern-auth/actions/workflows/ci.yml)
 
 Staff sign-in for **Lantern Mart**, a fictional retail chain, built on Keycloak: HQ staff, outlet managers, and a
 shared till where an outlet account signs in once and cashiers identify themselves with a PIN. It's a learning and
@@ -24,7 +24,7 @@ flowchart LR
 Requirements: Docker. For the tests: the .NET 10 SDK.
 
 ```bash
-git clone https://github.com/irfanfikhri/lantern-auth.git && cd lantern-auth
+git clone https://github.com/Fikhri02/lantern-auth.git && cd lantern-auth
 docker compose up -d --build --wait
 ./scripts/smoke.sh
 ```
